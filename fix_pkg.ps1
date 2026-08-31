@@ -1,0 +1,3 @@
+$content = Get-Content "app/src/main/java/com/attendance/app/student/ui/StudentProfileScreen.kt" -Raw
+$content = $content -replace "(?m)^import androidx\.compose\.ui\.draw\.clip\r?\nimport androidx\.compose\.foundation\.background\r?\nimport androidx\.compose\.material\.icons\.filled\.Edit\r?\npackage com\.attendance\.app\.student\.ui", "package com.attendance.app.student.ui`nimport androidx.compose.ui.draw.clip`nimport androidx.compose.foundation.background`nimport androidx.compose.material.icons.filled.Edit"
+Set-Content "app/src/main/java/com/attendance/app/student/ui/StudentProfileScreen.kt" $content

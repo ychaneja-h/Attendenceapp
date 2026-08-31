@@ -1,0 +1,5 @@
+$content = Get-Content "backend/src/main/kotlin/com/attendance/server/models/Tables.kt" -Raw
+$content = $content -replace "val collegeId = varchar\(`"college_id`", 50\)\.uniqueIndex\(\)", "val collegeId = varchar(`"college_id`", 50)"
+$content = $content -replace "val createdAt = timestamp\(`"created_at`"\)", "val deviceId = varchar(`"device_id`", 255).nullable()`n    val faceEmbedding = text(`"face_embedding`").nullable()`n    val createdAt = timestamp(`"created_at`")"
+$content += "`n`nobject ApprovalRequests : Table(`"approval_requests`") {`n    val id = uuid(`"id`").autoGenerate()`n    val studentId = uuid(`"student_id`").references(Users.id)`n    val requestType = varchar(`"request_type`", 50)`n    val requestedData = text(`"requested_data`")`n    val status = varchar(`"status`", 20).default(`"PENDING`")`n    val createdAt = timestamp(`"created_at`")`n    override val primaryKey = PrimaryKey(id)`n}"
+Set-Content "backend/src/main/kotlin/com/attendance/server/models/Tables.kt" $content
