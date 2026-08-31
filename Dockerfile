@@ -2,6 +2,7 @@
 COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
 RUN sed -i 's/include(":app")//g' settings.gradle.kts
+RUN sed -i '/org.gradle.java.home/d' gradle.properties
 RUN gradle :backend:installDist --no-daemon
 
 FROM eclipse-temurin:21-jre-jammy
