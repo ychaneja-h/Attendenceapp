@@ -22,6 +22,7 @@ fun main() {
 
 fun Application.module() {
     DatabaseConfig.init()
+    com.attendance.server.services.AuthService.seedDefaultUsers()
     configureSerialization()
     configureSecurity()
     configureStatusPages()
@@ -29,4 +30,5 @@ fun Application.module() {
     configureRateLimit()
     configureRouting()
 }
+
 

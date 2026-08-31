@@ -183,5 +183,19 @@ object AuthService {
 
         return sessionToken
     }
-}
 
+    fun seedDefaultUsers() {
+        org.jetbrains.exposed.sql.transactions.transaction {
+            val pw = org.mindrot.jbcrypt.BCrypt.withDefaults().hashToString(12, "123456".toCharArray())
+            if (com.attendance.server.models.Users.select { com.attendance.server.models.Users.collegeId eq "admin" }.count() == 0L) {
+                com.attendance.server.models.Users.insert {
+                    it[collegeId] = "admin"
+                    it[name] = "System Administrator"
+                    it[phone] = "9999999999"
+                    it[passwordHash] = pw
+                    it[role] = com.attendance.shared.model.Role.ADMIN
+                }
+            }
+        }
+    }
+}
