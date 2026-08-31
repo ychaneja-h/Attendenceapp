@@ -1,4 +1,4 @@
-package com.attendance.server.services
+﻿package com.attendance.server.services
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.attendance.server.models.*
@@ -82,76 +82,7 @@ object AuthService {
         }
     }
 
-    fun seedDefaultUsers() {
-        transaction {
-            val pw = BCrypt.withDefaults().hashToString(12, "123456".toCharArray())
-            
-            // Admin
-            if (Users.select { Users.collegeId eq "admin" }.count() == 0L) {
-                Users.insert {
-                    it[collegeId] = "admin"
-                    it[name] = "College Administrator"
-                    it[phone] = "9999999999"
-                    it[passwordHash] = pw
-                    it[role] = UserRole.ADMIN.name
-                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                    it[createdAt] = Instant.now()
-                    it[updatedAt] = Instant.now()
-                }
-            }
-
-            // HOD
-            if (Users.select { Users.collegeId eq "hod_cs" }.count() == 0L) {
-                Users.insert {
-                    it[collegeId] = "hod_cs"
-                    it[name] = "HOD Computer Science"
-                    it[phone] = "9999999998"
-                    it[passwordHash] = pw
-                    it[role] = UserRole.HOD.name
-                    it[department] = "CS"
-                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                    it[createdAt] = Instant.now()
-                    it[updatedAt] = Instant.now()
-                }
-            }
-
-            // Teacher
-            if (Users.select { Users.collegeId eq "teacher1" }.count() == 0L) {
-                Users.insert {
-                    it[collegeId] = "teacher1"
-                    it[name] = "Prof. Alan Turing"
-                    it[phone] = "9999999997"
-                    it[passwordHash] = pw
-                    it[role] = UserRole.TEACHER.name
-                    it[department] = "CS"
-                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                    it[createdAt] = Instant.now()
-                    it[updatedAt] = Instant.now()
-                }
-            }
-
-            // Student
-            if (Users.select { Users.collegeId eq "student1" }.count() == 0L) {
-                Users.insert {
-                    it[collegeId] = "student1"
-                    it[name] = "John Doe"
-                    it[phone] = "9999999996"
-                    it[passwordHash] = pw
-                    it[role] = UserRole.STUDENT.name
-                    it[department] = "CS"
-                    it[section] = "A"
-                    it[semester] = 5
-                    it[academicYear] = "2026"
-                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                    it[createdAt] = Instant.now()
-                    it[updatedAt] = Instant.now()
-                }
-            }
-
-            println("Seeded default users: admin, hod_cs, teacher1, student1 (password: 123456) if missing")
-        }
-    }
-
+    
     fun initiateLogin(request: LoginRequest): LoginStepOneResponse {
         return transaction {
             val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
@@ -253,3 +184,4 @@ object AuthService {
         return sessionToken
     }
 }
+
