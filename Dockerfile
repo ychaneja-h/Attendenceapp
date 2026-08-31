@@ -1,7 +1,7 @@
 ﻿FROM gradle:8.7-jdk21 AS build
 COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
-RUN ./gradlew :backend:installDist --no-daemon
+RUN gradle :backend:installDist --no-daemon
 
 FROM eclipse-temurin:21-jre-jammy
 RUN mkdir /app
