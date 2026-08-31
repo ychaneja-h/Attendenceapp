@@ -9,14 +9,26 @@ import com.attendance.server.models.*
 
 object DatabaseConfig {
     fun init() {
+        val dbUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/attendance"
+        // Ensure SSL is enabled for Supabase
+        val finalUrl = if (dbUrl.contains("supabase") && !dbUrl.contains("sslmode")) {
+            if (dbUrl.contains("?")) "$dbUrl&sslmode=require" else "$dbUrl?sslmode=require"
+        } else {
+            dbUrl
+        }
+
         val config = HikariConfig().apply {
-            jdbcUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/attendance"
+            jdbcUrl = finalUrl
             driverClassName = "org.postgresql.Driver"
             username = System.getenv("DB_USER") ?: "postgres"
             password = System.getenv("DB_PASSWORD") ?: "123456"
-            maximumPoolSize = 5
+            maximumPoolSize = 3
+            minimumIdle = 1
             isAutoCommit = false
             transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            connectionTimeout = 30000
+            idleTimeout = 600000
+            maxLifetime = 1800000
         }
 
         Database.connect(HikariDataSource(config))
