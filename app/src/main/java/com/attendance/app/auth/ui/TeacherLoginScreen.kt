@@ -64,6 +64,7 @@ fun TeacherLoginScreen(
 
             val context = androidx.compose.ui.platform.LocalContext.current
             var showDeviceMismatchDialog by remember { mutableStateOf<String?>(null) }
+            var showPendingApprovalDialog by remember { mutableStateOf(false) }
             
             showDeviceMismatchDialog?.let { deviceId ->
                 AlertDialog(
@@ -83,6 +84,17 @@ fun TeacherLoginScreen(
                 )
             }
 
+            if (showPendingApprovalDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPendingApprovalDialog = false },
+                    title = { Text("Pending Approval") },
+                    text = { Text("Your account is waiting for HOD approval.") },
+                    confirmButton = {
+                        TextButton(onClick = { showPendingApprovalDialog = false }) { Text("OK") }
+                    }
+                )
+            }
+
             LoadingButton(
                 text = "Continue",
                 onClick = {
@@ -91,7 +103,8 @@ fun TeacherLoginScreen(
                         collegeId = facultyId,
                         password = password,
                         onOtpRequired = { token -> onOtpRequired("9999999997", token) },
-                        onDeviceMismatch = { deviceId -> showDeviceMismatchDialog = deviceId }
+                        onDeviceMismatch = { deviceId -> showDeviceMismatchDialog = deviceId },
+                        onPendingApproval = { showPendingApprovalDialog = true }
                     )
                 },
                 isLoading = viewModel.isLoading,

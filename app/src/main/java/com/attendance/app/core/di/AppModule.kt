@@ -51,7 +51,7 @@ val appModule = module {
     viewModel { TeacherReviewsViewModel(get(), get()) }
     viewModel { ProfileViewModel(get()) }
     viewModel { com.attendance.app.face.presentation.FaceRegistrationViewModel(get()) }
-    viewModel { com.attendance.app.hod.presentation.HodDashboardViewModel() }
+    viewModel { com.attendance.app.hod.presentation.HodDashboardViewModel(get()) }
     viewModel { com.attendance.app.admin.presentation.AdminDashboardViewModel() }
 }
 

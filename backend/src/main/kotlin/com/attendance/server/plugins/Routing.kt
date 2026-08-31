@@ -26,6 +26,7 @@ fun Application.configureRouting() {
         classRoutes()
         attendanceRoutes(attendanceService)
         userRoutes()
+        hodRoutes()
         requestRoutes()
         staticFiles("/uploads", java.io.File("backend/uploads"))
     }

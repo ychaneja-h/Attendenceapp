@@ -19,7 +19,7 @@ class AuthViewModel(
     var error by mutableStateOf<String?>(null)
         private set
 
-    fun login(context: android.content.Context, collegeId: String, password: String, onOtpRequired: (String) -> Unit, onDeviceMismatch: (String) -> Unit) {
+    fun login(context: android.content.Context, collegeId: String, password: String, onOtpRequired: (String) -> Unit, onDeviceMismatch: (String) -> Unit, onPendingApproval: () -> Unit = {}) {
         viewModelScope.launch {
             isLoading = true
             error = null
@@ -31,6 +31,8 @@ class AuthViewModel(
                 val errorMsg = e.message ?: "Login failed"
                 if (errorMsg.contains("DEVICE_MISMATCH")) {
                     onDeviceMismatch(androidId)
+                } else if (errorMsg.contains("PENDING_APPROVAL")) {
+                    onPendingApproval()
                 } else {
                     error = errorMsg
                 }
@@ -91,7 +93,7 @@ class AuthViewModel(
         name: String,
         collegeId: String,
         phone: String,
-        department: String,
+        departmentCode: String,
         password: String,
         onOtpRequired: (String) -> Unit
     ) {
@@ -104,7 +106,38 @@ class AuthViewModel(
                     name = name,
                     phone = phone,
                     password = password,
-                    department = department
+                    departmentCode = departmentCode
+                )
+            )
+            result.onSuccess { response ->
+                onOtpRequired(response.sessionToken)
+            }.onFailure { e ->
+                error = e.message ?: "Registration failed"
+            }
+            isLoading = false
+        }
+    }
+
+    fun registerHod(
+        name: String,
+        collegeId: String,
+        phone: String,
+        department: String,
+        departmentCode: String,
+        password: String,
+        onOtpRequired: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+            val result = repository.registerHod(
+                com.attendance.shared.dto.HodRegisterRequest(
+                    name = name,
+                    collegeId = collegeId,
+                    phone = phone,
+                    password = password,
+                    department = department,
+                    departmentCode = departmentCode
                 )
             )
             result.onSuccess { response ->

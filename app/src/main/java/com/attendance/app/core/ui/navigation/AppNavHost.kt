@@ -46,6 +46,7 @@ fun AppNavHost() {
                 onStudentRegister = { navController.navigate(Screen.StudentRegister) },
                 onTeacherLogin = { navController.navigate(Screen.TeacherLogin) },
                 onHodLogin = { navController.navigate(Screen.HodLogin) },
+                onHodRegister = { navController.navigate(Screen.HodRegister) },
                 onAdminLogin = { navController.navigate(Screen.AdminLogin) }
             )
         }
@@ -90,6 +91,14 @@ fun AppNavHost() {
                 onBack = { navController.popBackStack() }
             )
         }
+        composable<Screen.HodRegister> {
+            HodRegisterScreen(
+                onOtpRequired = { phone, token ->
+                    navController.navigate(Screen.OtpVerification(phone, "HOD_REGISTER", token))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable<Screen.AdminLogin> {
             AdminLoginScreen(
                 onOtpRequired = { phone, token ->
@@ -108,8 +117,8 @@ fun AppNavHost() {
                         "STUDENT", "STUDENT_REGISTER" -> {
                             if (requiresFace) Screen.FaceEnrollment else Screen.StudentHome
                         }
-                        "TEACHER" -> Screen.TeacherHome
-                        "HOD" -> Screen.HodDashboard
+                        "TEACHER", "TEACHER_REGISTER" -> Screen.TeacherHome
+                        "HOD", "HOD_REGISTER" -> Screen.HodDashboard
                         "ADMIN" -> Screen.AdminDashboard
                         else -> Screen.RoleSelection
                     }

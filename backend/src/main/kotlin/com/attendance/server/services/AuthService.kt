@@ -1,4 +1,4 @@
-﻿package com.attendance.server.services
+package com.attendance.server.services
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.attendance.server.models.*
@@ -54,6 +54,40 @@ object AuthService {
         }
     }
 
+    fun registerHod(request: HodRegisterRequest): String {
+        return transaction {
+            val existingUser = Users.select { Users.phone eq request.phone }.firstOrNull()
+            if (existingUser != null) {
+                if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
+                    throw IllegalArgumentException("Account with this Phone already exists")
+                }
+                return@transaction generateAndSendOtp(existingUser[Users.id], request.phone, OtpPurpose.REGISTRATION)
+            }
+
+            if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
+                throw Exception("Department Code already in use by another HOD")
+            }
+
+            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
+
+            val userId = Users.insert {
+                it[collegeId] = request.collegeId
+                it[name] = request.name
+                it[phone] = request.phone
+                it[passwordHash] = hashedPassword
+                it[role] = UserRole.HOD.name
+                it[registrationStatus] = RegistrationStatus.ACTIVE.name
+                it[department] = request.department
+                it[departmentCode] = request.departmentCode
+                it[accountStatus] = "ACTIVE"
+                it[createdAt] = Instant.now()
+                it[updatedAt] = Instant.now()
+            }[Users.id]
+
+            generateAndSendOtp(userId, request.phone, OtpPurpose.REGISTRATION)
+        }
+    }
+
     fun registerTeacher(request: TeacherRegisterRequest): String {
         return transaction {
             val existingUser = Users.select { Users.phone eq request.phone }.firstOrNull()
@@ -62,6 +96,10 @@ object AuthService {
                     throw IllegalArgumentException("Account with this Phone already exists")
                 }
                 return@transaction generateAndSendOtp(existingUser[Users.id], request.phone, OtpPurpose.REGISTRATION)
+            }
+
+            if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
+                throw Exception("Invalid Department Code")
             }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
@@ -73,7 +111,8 @@ object AuthService {
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.TEACHER.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                it[department] = request.department
+                it[departmentCode] = request.departmentCode
+                it[accountStatus] = "PENDING"
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
             }[Users.id]
@@ -91,6 +130,10 @@ object AuthService {
             val result = BCrypt.verifyer().verify(request.password.toCharArray(), user[Users.passwordHash])
             if (!result.verified) {
                 throw IllegalArgumentException("Invalid credentials")
+            }
+
+            if (user[Users.accountStatus] == "PENDING") {
+                throw SecurityException("PENDING_APPROVAL")
             }
 
             if (user[Users.registrationStatus] == RegistrationStatus.SUSPENDED.name) {
@@ -186,14 +229,14 @@ object AuthService {
 
     fun seedDefaultUsers() {
         org.jetbrains.exposed.sql.transactions.transaction {
-            val pw = org.mindrot.jbcrypt.BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
+            val pw = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
             if (com.attendance.server.models.Users.select { com.attendance.server.models.Users.collegeId eq "YogeshRtu" }.count() == 0L) {
                 com.attendance.server.models.Users.insert {
                     it[collegeId] = "YogeshRtu"
                     it[name] = "System Administrator"
                     it[phone] = "9999999999"
                     it[passwordHash] = pw
-                    it[role] = com.attendance.shared.model.Role.ADMIN
+                    it[role] = com.attendance.shared.model.UserRole.ADMIN.name
                 }
             }
         }

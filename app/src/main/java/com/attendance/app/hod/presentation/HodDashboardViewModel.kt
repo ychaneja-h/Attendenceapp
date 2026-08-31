@@ -2,18 +2,35 @@ package com.attendance.app.hod.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.attendance.app.core.network.Constants
+import com.attendance.shared.dto.TeacherProfileDto
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HodDashboardViewModel : ViewModel() {
+class HodDashboardViewModel(
+    private val httpClient: HttpClient
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HodDashboardState>(HodDashboardState.Loading)
     val uiState: StateFlow<HodDashboardState> = _uiState.asStateFlow()
 
+    private val _pendingTeachers = MutableStateFlow<List<TeacherProfileDto>>(emptyList())
+    val pendingTeachers: StateFlow<List<TeacherProfileDto>> = _pendingTeachers.asStateFlow()
+
+    private val _activeTeachers = MutableStateFlow<List<TeacherProfileDto>>(emptyList())
+    val activeTeachers: StateFlow<List<TeacherProfileDto>> = _activeTeachers.asStateFlow()
+
     init {
         loadDashboardStats()
+        fetchTeachers()
     }
 
     private fun loadDashboardStats() {
@@ -30,6 +47,63 @@ class HodDashboardViewModel : ViewModel() {
     
     fun exportCsvReport(classId: String) {
         // Logic to trigger backend CSV generation or local Room export
+    }
+
+    fun fetchTeachers() {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.get("${Constants.BASE_URL}/hod/teachers/pending")
+                if (response.status.isSuccess()) {
+                    _pendingTeachers.value = response.body()
+                }
+                
+                val activeResponse = httpClient.get("${Constants.BASE_URL}/hod/teachers/active")
+                if (activeResponse.status.isSuccess()) {
+                    _activeTeachers.value = activeResponse.body()
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun approveTeacher(id: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/approve")
+                if (response.status.isSuccess()) {
+                    fetchTeachers()
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun rejectTeacher(id: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/reject")
+                if (response.status.isSuccess()) {
+                    fetchTeachers()
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun deleteTeacher(id: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.delete("${Constants.BASE_URL}/hod/teachers/$id")
+                if (response.status.isSuccess()) {
+                    fetchTeachers()
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
     }
 }
 

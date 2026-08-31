@@ -29,6 +29,15 @@ fun Route.authRoutes() {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
             }
         }
+        post("/hod/register") {
+            try {
+                val request = call.receive<HodRegisterRequest>()
+                val sessionToken = AuthService.registerHod(request)
+                call.respond(HttpStatusCode.Created, mapOf("sessionToken" to sessionToken))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
+            }
+        }
         
         post("/login") {
             handleLogin(call)
@@ -66,6 +75,8 @@ private suspend fun handleLogin(call: ApplicationCall) {
     } catch (e: Exception) {
         if (e.message == "DEVICE_MISMATCH") {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "DEVICE_MISMATCH"))
+        } else if (e.message == "PENDING_APPROVAL") {
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "PENDING_APPROVAL"))
         } else {
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to (e.message ?: "Login failed")))
         }

@@ -59,7 +59,7 @@ fun TeacherRegisterScreen(
             AppTextField(value = phone, onValueChange = { phone = it }, label = "Phone Number")
             Spacer(modifier = Modifier.height(16.dp))
 
-            AppTextField(value = department, onValueChange = { department = it }, label = "Department (e.g. CS, IT)")
+            AppTextField(value = department, onValueChange = { department = it }, label = "Department Invite Code")
             Spacer(modifier = Modifier.height(16.dp))
 
             PasswordTextField(value = password, onValueChange = { password = it }, label = "Password")
@@ -77,7 +77,7 @@ fun TeacherRegisterScreen(
                         name = name,
                         collegeId = facultyId,
                         phone = phone,
-                        department = department,
+                        departmentCode = department,
                         password = password
                     ) { sessionToken ->
                         onOtpRequired(phone, sessionToken)

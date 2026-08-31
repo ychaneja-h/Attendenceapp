@@ -59,6 +59,23 @@ class AuthRepository(
         }
     }
 
+    suspend fun registerHod(request: com.attendance.shared.dto.HodRegisterRequest): Result<RegisterResponse> {
+        return try {
+            val response = httpClient.post("$baseUrl/hod/register") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.isSuccess()) {
+                val body: RegisterResponse = response.body()
+                Result.success(body)
+            } else {
+                Result.failure(Exception("Registration failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun initiateLogin(request: LoginRequest): Result<LoginStepOneResponse> {
         return try {
             val response = httpClient.post("$baseUrl/student/login") {

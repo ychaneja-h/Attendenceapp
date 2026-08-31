@@ -10,6 +10,7 @@ sealed interface Screen {
     @Serializable data object TeacherLogin : Screen
     @Serializable data object TeacherRegister : Screen
     @Serializable data object HodLogin : Screen
+    @Serializable data object HodRegister : Screen
     @Serializable data object AdminLogin : Screen
     @Serializable data class OtpVerification(val phone: String, val role: String, val sessionToken: String) : Screen
 

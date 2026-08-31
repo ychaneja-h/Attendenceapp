@@ -17,6 +17,15 @@ data class ProfileResponse(
 )
 
 @Serializable
+data class TeacherProfileDto(
+    val id: String,
+    val name: String,
+    val facultyId: String,
+    val phone: String,
+    val status: String,
+    val joinedAt: String
+)
+@Serializable
 data class UpdateProfileRequest(
     val name: String,
     val email: String,

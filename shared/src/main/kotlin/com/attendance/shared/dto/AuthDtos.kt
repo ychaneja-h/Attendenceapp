@@ -15,12 +15,22 @@ data class StudentRegisterRequest(
 )
 
 @Serializable
+data class HodRegisterRequest(
+    val name: String,
+    val collegeId: String,
+    val phone: String,
+    val password: String,
+    val department: String,
+    val departmentCode: String
+)
+
+@Serializable
 data class TeacherRegisterRequest(
     val collegeId: String,
     val name: String,
     val phone: String,
     val password: String,
-    val department: String
+    val departmentCode: String
 )
 
 @Serializable

@@ -20,6 +20,7 @@ fun RoleSelectionScreen(
     onStudentRegister: () -> Unit,
     onTeacherLogin: () -> Unit,
     onHodLogin: () -> Unit,
+    onHodRegister: () -> Unit,
     onAdminLogin: () -> Unit
 ) {
     Column(
@@ -65,6 +66,14 @@ fun RoleSelectionScreen(
         RoleCard("Teacher", Icons.Default.Person, "Login with Faculty ID") { onTeacherLogin() }
         Spacer(modifier = Modifier.height(12.dp))
         RoleCard("HOD", Icons.Default.SupervisorAccount, "Login with HOD ID") { onHodLogin() }
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        OutlinedButton(
+            onClick = onHodRegister,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("New HOD? Register Here")
+        }
         Spacer(modifier = Modifier.height(12.dp))
         RoleCard("Admin", Icons.Default.AdminPanelSettings, "Login with Admin ID") { onAdminLogin() }
     }
