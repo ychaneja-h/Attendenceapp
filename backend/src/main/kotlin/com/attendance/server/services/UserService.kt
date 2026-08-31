@@ -1,4 +1,4 @@
-package com.attendance.server.services
+﻿package com.attendance.server.services
 
 import com.attendance.server.models.Users
 import com.attendance.shared.dto.ProfileResponse
@@ -17,7 +17,6 @@ class UserService {
             id = row[Users.id].toString(),
             name = row[Users.name],
             email = row[Users.email],
-            phone = row[Users.phone],
             role = row[Users.role],
             department = row[Users.department],
             section = row[Users.section],
@@ -31,7 +30,6 @@ class UserService {
         Users.update({ Users.id eq userId }) {
             it[name] = req.name
             it[email] = req.email
-            it[phone] = req.phone
             req.department?.let { dept -> it[department] = dept }
             req.section?.let { sec -> it[section] = sec }
             req.batch?.let { b -> it[batch] = b }
@@ -48,3 +46,4 @@ class UserService {
         getProfile(userId)
     }
 }
+
