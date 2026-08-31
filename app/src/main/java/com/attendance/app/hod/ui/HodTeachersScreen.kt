@@ -1,4 +1,4 @@
-package com.attendance.app.hod.ui
+﻿package com.attendance.app.hod.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -82,8 +82,7 @@ fun TeacherCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = teacher.name, style = MaterialTheme.typography.titleMedium)
             Text(text = "ID: ${teacher.facultyId}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Phone: ${teacher.phone}", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 if (isPending) {
                     TextButton(onClick = onReject) { Text("Reject") }
@@ -96,3 +95,5 @@ fun TeacherCard(
         }
     }
 }
+
+

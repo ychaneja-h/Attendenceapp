@@ -2,9 +2,7 @@ package com.attendance.app.auth.data
 
 import com.attendance.shared.dto.AuthTokenResponse
 import com.attendance.shared.dto.LoginRequest
-import com.attendance.shared.dto.LoginStepOneResponse
 import com.attendance.shared.dto.StudentRegisterRequest
-import com.attendance.shared.dto.VerifyOtpRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -25,78 +23,9 @@ class AuthRepository(
 ) {
     private val baseUrl = "${Constants.BASE_URL}/auth"
 
-    suspend fun registerStudent(request: StudentRegisterRequest): Result<RegisterResponse> {
+    suspend fun registerStudent(request: StudentRegisterRequest): Result<AuthTokenResponse> {
         return try {
             val response = httpClient.post("$baseUrl/student/register") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-            if (response.status.isSuccess()) {
-                val body: RegisterResponse = response.body()
-                Result.success(body)
-            } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun registerTeacher(request: com.attendance.shared.dto.TeacherRegisterRequest): Result<RegisterResponse> {
-        return try {
-            val response = httpClient.post("$baseUrl/teacher/register") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-            if (response.status.isSuccess()) {
-                val body: RegisterResponse = response.body()
-                Result.success(body)
-            } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun registerHod(request: com.attendance.shared.dto.HodRegisterRequest): Result<RegisterResponse> {
-        return try {
-            val response = httpClient.post("$baseUrl/hod/register") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-            if (response.status.isSuccess()) {
-                val body: RegisterResponse = response.body()
-                Result.success(body)
-            } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun initiateLogin(request: LoginRequest): Result<LoginStepOneResponse> {
-        return try {
-            val response = httpClient.post("$baseUrl/student/login") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-            if (response.status.isSuccess()) {
-                val body: LoginStepOneResponse = response.body()
-                Result.success(body)
-            } else {
-                val errorBody = response.bodyAsText()
-                Result.failure(Exception(errorBody.takeIf { it.isNotBlank() } ?: "Login failed: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun verifyOtp(request: VerifyOtpRequest): Result<AuthTokenResponse> {
-        return try {
-            val response = httpClient.post("$baseUrl/student/verify-otp") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -107,7 +36,68 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                Result.failure(Exception("OTP Verification failed: ${response.status}"))
+                Result.failure(Exception("Registration failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun registerTeacher(request: com.attendance.shared.dto.TeacherRegisterRequest): Result<AuthTokenResponse> {
+        return try {
+            val response = httpClient.post("$baseUrl/teacher/register") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.isSuccess()) {
+                val body: AuthTokenResponse = response.body()
+                tokenManager.saveToken(body.accessToken)
+                tokenManager.saveUserId(body.userId)
+                tokenManager.saveRole(body.role)
+                Result.success(body)
+            } else {
+                Result.failure(Exception("Registration failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun registerHod(request: com.attendance.shared.dto.HodRegisterRequest): Result<AuthTokenResponse> {
+        return try {
+            val response = httpClient.post("$baseUrl/hod/register") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.isSuccess()) {
+                val body: AuthTokenResponse = response.body()
+                tokenManager.saveToken(body.accessToken)
+                tokenManager.saveUserId(body.userId)
+                tokenManager.saveRole(body.role)
+                Result.success(body)
+            } else {
+                Result.failure(Exception("Registration failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun initiateLogin(request: LoginRequest): Result<AuthTokenResponse> {
+        return try {
+            val response = httpClient.post("$baseUrl/student/login") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.isSuccess()) {
+                val body: AuthTokenResponse = response.body()
+                tokenManager.saveToken(body.accessToken)
+                tokenManager.saveUserId(body.userId)
+                tokenManager.saveRole(body.role)
+                Result.success(body)
+            } else {
+                val errorBody = response.bodyAsText()
+                Result.failure(Exception(errorBody.takeIf { it.isNotBlank() } ?: "Login failed: ${response.status}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

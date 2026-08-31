@@ -17,7 +17,7 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HodLoginScreen(
-    onOtpRequired: (phone: String, sessionToken: String) -> Unit,
+    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
@@ -89,7 +89,7 @@ fun HodLoginScreen(
                         context = context,
                         collegeId = hodId,
                         password = password,
-                        onOtpRequired = { token -> onOtpRequired("9999999998", token) },
+                        onSuccess = onSuccess,
                         onDeviceMismatch = { deviceId -> showDeviceMismatchDialog = deviceId }
                     )
                 },

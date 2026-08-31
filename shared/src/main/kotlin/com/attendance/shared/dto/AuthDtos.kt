@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 data class StudentRegisterRequest(
     val collegeId: String,
     val name: String,
-    val phone: String,
     val password: String,
     val department: String,
     val section: String,
@@ -18,7 +17,6 @@ data class StudentRegisterRequest(
 data class HodRegisterRequest(
     val name: String,
     val collegeId: String,
-    val phone: String,
     val password: String,
     val department: String,
     val departmentCode: String
@@ -28,7 +26,6 @@ data class HodRegisterRequest(
 data class TeacherRegisterRequest(
     val collegeId: String,
     val name: String,
-    val phone: String,
     val password: String,
     val departmentCode: String
 )
@@ -45,20 +42,6 @@ data class LoginRequest(
     val password: String,
     val deviceFingerprint: String,
     val deviceModel: String? = null
-)
-
-@Serializable
-data class VerifyOtpRequest(
-    val phone: String,
-    val otp: String,
-    val sessionToken: String
-)
-
-@Serializable
-data class LoginStepOneResponse(
-    val otpSent: Boolean,
-    val maskedPhone: String,
-    val sessionToken: String
 )
 
 @Serializable

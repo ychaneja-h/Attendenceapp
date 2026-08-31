@@ -12,7 +12,6 @@ sealed interface Screen {
     @Serializable data object HodLogin : Screen
     @Serializable data object HodRegister : Screen
     @Serializable data object AdminLogin : Screen
-    @Serializable data class OtpVerification(val phone: String, val role: String, val sessionToken: String) : Screen
 
     // Student
     @Serializable data object StudentHome : Screen
@@ -44,7 +43,7 @@ sealed interface Screen {
     @Serializable data object HodProfile : Screen
 
     // Admin
-    @Serializable data object AdminDashboard : Screen
+    @Serializable data object AdminHome : Screen
     @Serializable data object AdminUsers : Screen
     @Serializable data object AdminDepartments : Screen
     @Serializable data object AdminSettings : Screen

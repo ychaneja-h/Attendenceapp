@@ -22,7 +22,6 @@ object HodService {
                         id = it[Users.id].toString(),
                         name = it[Users.name],
                         facultyId = it[Users.collegeId],
-                        phone = it[Users.phone],
                         status = it[Users.accountStatus],
                         joinedAt = it[Users.createdAt].toString()
                     )
@@ -40,7 +39,6 @@ object HodService {
                         id = it[Users.id].toString(),
                         name = it[Users.name],
                         facultyId = it[Users.collegeId],
-                        phone = it[Users.phone],
                         status = it[Users.accountStatus],
                         joinedAt = it[Users.createdAt].toString()
                     )

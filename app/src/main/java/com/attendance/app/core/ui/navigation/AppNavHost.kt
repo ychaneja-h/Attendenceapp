@@ -28,11 +28,26 @@ fun AppNavHost() {
             "STUDENT" -> Screen.StudentHome
             "TEACHER" -> Screen.TeacherHome
             "HOD" -> Screen.HodDashboard
-            "ADMIN" -> Screen.AdminDashboard
+            "ADMIN" -> Screen.AdminHome
             else -> Screen.RoleSelection
         }
     } else {
         Screen.RoleSelection
+    }
+
+    val handleAuthSuccess: (String, Boolean) -> Unit = { userRole, requiresFace ->
+        val destination = when (userRole.uppercase()) {
+            "STUDENT", "STUDENT_REGISTER" -> {
+                if (requiresFace) Screen.FaceEnrollment else Screen.StudentHome
+            }
+            "TEACHER", "TEACHER_REGISTER" -> Screen.TeacherHome
+            "HOD", "HOD_REGISTER" -> Screen.HodDashboard
+            "ADMIN" -> Screen.AdminHome
+            else -> Screen.RoleSelection
+        }
+        navController.navigate(destination) {
+            popUpTo(Screen.RoleSelection) { inclusive = true }
+        }
     }
 
     NavHost(
@@ -45,6 +60,7 @@ fun AppNavHost() {
                 onStudentLogin = { navController.navigate(Screen.StudentLogin) },
                 onStudentRegister = { navController.navigate(Screen.StudentRegister) },
                 onTeacherLogin = { navController.navigate(Screen.TeacherLogin) },
+                onTeacherRegister = { navController.navigate(Screen.TeacherRegister) },
                 onHodLogin = { navController.navigate(Screen.HodLogin) },
                 onHodRegister = { navController.navigate(Screen.HodRegister) },
                 onAdminLogin = { navController.navigate(Screen.AdminLogin) }
@@ -52,80 +68,44 @@ fun AppNavHost() {
         }
         composable<Screen.StudentLogin> {
             StudentLoginScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "STUDENT", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.StudentRegister> {
             StudentRegisterScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "STUDENT_REGISTER", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.TeacherLogin> {
             TeacherLoginScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "TEACHER", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onRegisterClick = { navController.navigate(Screen.TeacherRegister) },
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.TeacherRegister> {
             TeacherRegisterScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "TEACHER_REGISTER", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.HodLogin> {
             HodLoginScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "HOD", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.HodRegister> {
             HodRegisterScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "HOD_REGISTER", token))
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.AdminLogin> {
             AdminLoginScreen(
-                onOtpRequired = { phone, token ->
-                    navController.navigate(Screen.OtpVerification(phone, "ADMIN", token))
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable<Screen.OtpVerification> { backStackEntry ->
-            val args = backStackEntry.toRoute<Screen.OtpVerification>()
-            OtpVerificationScreen(
-                phone = args.phone,
-                sessionToken = args.sessionToken,
-                onVerified = { role, requiresFace ->
-                    val destination = when (role) {
-                        "STUDENT", "STUDENT_REGISTER" -> {
-                            if (requiresFace) Screen.FaceEnrollment else Screen.StudentHome
-                        }
-                        "TEACHER", "TEACHER_REGISTER" -> Screen.TeacherHome
-                        "HOD", "HOD_REGISTER" -> Screen.HodDashboard
-                        "ADMIN" -> Screen.AdminDashboard
-                        else -> Screen.RoleSelection
-                    }
-                    navController.navigate(destination) {
-                        popUpTo(Screen.RoleSelection) { inclusive = true }
-                    }
-                },
+                onSuccess = handleAuthSuccess,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -206,7 +186,7 @@ fun AppNavHost() {
         }
 
         // Admin screens
-        composable<Screen.AdminDashboard> {
+        composable<Screen.AdminHome> {
             AdminDashboardScreen(navController = navController)
         }
         composable<Screen.AdminUsers> {

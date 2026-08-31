@@ -17,7 +17,7 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeacherLoginScreen(
-    onOtpRequired: (phone: String, sessionToken: String) -> Unit,
+    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onRegisterClick: () -> Unit = {},
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
@@ -102,7 +102,7 @@ fun TeacherLoginScreen(
                         context = context,
                         collegeId = facultyId,
                         password = password,
-                        onOtpRequired = { token -> onOtpRequired("9999999997", token) },
+                        onSuccess = onSuccess,
                         onDeviceMismatch = { deviceId -> showDeviceMismatchDialog = deviceId },
                         onPendingApproval = { showPendingApprovalDialog = true }
                     )
@@ -110,14 +110,6 @@ fun TeacherLoginScreen(
                 isLoading = viewModel.isLoading,
                 enabled = facultyId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(
-                onClick = onRegisterClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("New Teacher? Register here")
-            }
         }
     }
 }

@@ -55,15 +55,6 @@ fun Route.authRoutes() {
             handleLogin(call)
         }
         
-        post("/verify-otp") {
-            handleVerifyOtp(call)
-        }
-        post("/student/verify-otp") {
-            handleVerifyOtp(call)
-        }
-        post("/teacher/verify-otp") {
-            handleVerifyOtp(call)
-        }
     }
 }
 
@@ -80,15 +71,5 @@ private suspend fun handleLogin(call: ApplicationCall) {
         } else {
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to (e.message ?: "Login failed")))
         }
-    }
-}
-
-private suspend fun handleVerifyOtp(call: ApplicationCall) {
-    try {
-        val request = call.receive<VerifyOtpRequest>()
-        val response = AuthService.verifyOtpAndLogin(request)
-        call.respond(HttpStatusCode.OK, response)
-    } catch (e: Exception) {
-        call.respond(HttpStatusCode.Unauthorized, mapOf("error" to (e.message ?: "OTP Verification failed")))
     }
 }

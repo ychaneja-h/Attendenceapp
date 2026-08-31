@@ -8,7 +8,7 @@ object Users : Table("users") {
     val collegeId = varchar("college_id", 50)
     val name = varchar("name", 200)
     val email = varchar("email", 200).default("")
-    val phone = varchar("phone", 15).uniqueIndex()
+    val phone = varchar("phone", 15).nullable()
     val passwordHash = varchar("password_hash", 500)
     val role = varchar("role", 20) // STUDENT, TEACHER, HOD, ADMIN
     val registrationStatus = varchar("registration_status", 30) // PENDING_PHONE_VERIFY, PENDING_APPROVAL, ACTIVE, SUSPENDED
@@ -24,6 +24,7 @@ object Users : Table("users") {
     val faceEmbedding = text("face_embedding").nullable()
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
+    val lastLoginAt = timestamp("last_login_at").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 

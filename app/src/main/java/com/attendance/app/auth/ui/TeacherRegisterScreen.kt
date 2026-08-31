@@ -18,13 +18,12 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeacherRegisterScreen(
-    onOtpRequired: (phone: String, sessionToken: String) -> Unit,
+    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var facultyId by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -56,9 +55,6 @@ fun TeacherRegisterScreen(
             AppTextField(value = facultyId, onValueChange = { facultyId = it }, label = "Faculty / Employee ID")
             Spacer(modifier = Modifier.height(16.dp))
 
-            AppTextField(value = phone, onValueChange = { phone = it }, label = "Phone Number")
-            Spacer(modifier = Modifier.height(16.dp))
-
             AppTextField(value = department, onValueChange = { department = it }, label = "Department Invite Code")
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -76,15 +72,14 @@ fun TeacherRegisterScreen(
                     viewModel.registerTeacher(
                         name = name,
                         collegeId = facultyId,
-                        phone = phone,
+                        phone = "",
                         departmentCode = department,
-                        password = password
-                    ) { sessionToken ->
-                        onOtpRequired(phone, sessionToken)
-                    }
+                        password = password,
+                        onSuccess = onSuccess
+                    )
                 },
                 isLoading = viewModel.isLoading,
-                enabled = name.isNotBlank() && facultyId.isNotBlank() && phone.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
+                enabled = name.isNotBlank() && facultyId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
         }
     }

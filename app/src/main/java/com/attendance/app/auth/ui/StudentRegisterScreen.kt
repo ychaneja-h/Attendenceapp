@@ -20,13 +20,12 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentRegisterScreen(
-    onOtpRequired: (phone: String, sessionToken: String) -> Unit,
+    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var collegeId by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
@@ -66,8 +65,6 @@ fun StudentRegisterScreen(
             Spacer(modifier = Modifier.height(12.dp))
             AppTextField(value = name, onValueChange = { name = it }, label = "Full Name")
             Spacer(modifier = Modifier.height(12.dp))
-            AppTextField(value = phone, onValueChange = { phone = it }, label = "Phone Number", keyboardType = KeyboardType.Phone)
-            Spacer(modifier = Modifier.height(12.dp))
             AppTextField(value = department, onValueChange = { department = it }, label = "Department")
             Spacer(modifier = Modifier.height(12.dp))
             AppTextField(value = section, onValueChange = { section = it }, label = "Section")
@@ -95,18 +92,17 @@ fun StudentRegisterScreen(
                     viewModel.register(
                         name = name.trim(),
                         collegeId = collegeId,
-                        phone = phone,
+                        phone = "",
                         department = department,
                         section = section,
                         semester = sem,
                         academicYear = "2024-2025",
-                        password = password
-                    ) { sessionToken ->
-                        onOtpRequired(phone, sessionToken)
-                    }
+                        password = password,
+                        onSuccess = onSuccess
+                    )
                 },
                 isLoading = viewModel.isLoading,
-                enabled = collegeId.isNotBlank() && name.isNotBlank() && phone.isNotBlank() && password.isNotBlank() && password == confirmPassword && !viewModel.isLoading
+                enabled = collegeId.isNotBlank() && name.isNotBlank() && password.isNotBlank() && password == confirmPassword && !viewModel.isLoading
             )
             Spacer(modifier = Modifier.height(24.dp))
         }

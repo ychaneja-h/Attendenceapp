@@ -23,6 +23,7 @@ fun Application.configureRouting() {
             call.respondFile(file)
         }
         authRoutes()
+        adminRoutes()
         classRoutes()
         attendanceRoutes(attendanceService)
         userRoutes()

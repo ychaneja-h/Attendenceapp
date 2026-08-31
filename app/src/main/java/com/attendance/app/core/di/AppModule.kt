@@ -1,4 +1,4 @@
-package com.attendance.app.core.di
+﻿package com.attendance.app.core.di
 
 import androidx.room.Room
 import com.attendance.app.core.data.local.room.AppDatabase
@@ -52,7 +52,7 @@ val appModule = module {
     viewModel { ProfileViewModel(get()) }
     viewModel { com.attendance.app.face.presentation.FaceRegistrationViewModel(get()) }
     viewModel { com.attendance.app.hod.presentation.HodDashboardViewModel(get()) }
-    viewModel { com.attendance.app.admin.presentation.AdminDashboardViewModel() }
+    viewModel { com.attendance.app.admin.presentation.AdminDashboardViewModel(get()) }
 }
 
 val dataModule = module {
@@ -89,3 +89,4 @@ val networkModule = module {
         }
     }
 }
+

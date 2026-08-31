@@ -14,15 +14,74 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.attendance.app.core.ui.components.PasswordTextField
+
 @Composable
 fun RoleSelectionScreen(
     onStudentLogin: () -> Unit,
     onStudentRegister: () -> Unit,
     onTeacherLogin: () -> Unit,
+    onTeacherRegister: () -> Unit,
     onHodLogin: () -> Unit,
     onHodRegister: () -> Unit,
     onAdminLogin: () -> Unit
 ) {
+    var showGatewayDialog by remember { mutableStateOf(false) }
+    var gatewayTarget by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var gatewayPasscode by remember { mutableStateOf("") }
+    var gatewayError by remember { mutableStateOf(false) }
+
+    if (showGatewayDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showGatewayDialog = false
+                gatewayPasscode = ""
+                gatewayError = false 
+            },
+            title = { Text("Staff Access") },
+            text = {
+                Column {
+                    PasswordTextField(
+                        value = gatewayPasscode,
+                        onValueChange = { 
+                            gatewayPasscode = it
+                            gatewayError = false 
+                        },
+                        label = "Staff Passcode"
+                    )
+                    if (gatewayError) {
+                        Text("Invalid Passcode", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (gatewayPasscode == "Yogesh@Rtu@admin") {
+                        showGatewayDialog = false
+                        gatewayPasscode = ""
+                        gatewayTarget?.invoke()
+                    } else {
+                        gatewayError = true
+                    }
+                }) {
+                    Text("Submit")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showGatewayDialog = false 
+                    gatewayPasscode = ""
+                    gatewayError = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,17 +124,33 @@ fun RoleSelectionScreen(
 
         RoleCard("Teacher", Icons.Default.Person, "Login with Faculty ID") { onTeacherLogin() }
         Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { 
+                gatewayTarget = onTeacherRegister
+                showGatewayDialog = true
+            },
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) {
+            Text("New Teacher? Register Here")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         RoleCard("HOD", Icons.Default.SupervisorAccount, "Login with HOD ID") { onHodLogin() }
         Spacer(modifier = Modifier.height(12.dp))
         
         OutlinedButton(
-            onClick = onHodRegister,
+            onClick = { 
+                gatewayTarget = onHodRegister
+                showGatewayDialog = true
+            },
             modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
             Text("New HOD? Register Here")
         }
         Spacer(modifier = Modifier.height(12.dp))
-        RoleCard("Admin", Icons.Default.AdminPanelSettings, "Login with Admin ID") { onAdminLogin() }
+        RoleCard("Admin", Icons.Default.AdminPanelSettings, "Login with Admin ID") { 
+            gatewayTarget = onAdminLogin
+            showGatewayDialog = true
+        }
     }
 }
 

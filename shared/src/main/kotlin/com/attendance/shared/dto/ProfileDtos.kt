@@ -21,10 +21,28 @@ data class TeacherProfileDto(
     val id: String,
     val name: String,
     val facultyId: String,
-    val phone: String,
     val status: String,
     val joinedAt: String
 )
+
+@Serializable
+data class StudentProfileDto(
+    val id: String,
+    val name: String,
+    val studentId: String,
+    val status: String,
+    val joinedAt: String
+)
+
+@Serializable
+data class HodProfileDto(
+    val id: String,
+    val name: String,
+    val facultyId: String,
+    val status: String,
+    val joinedAt: String
+)
+
 @Serializable
 data class UpdateProfileRequest(
     val name: String,

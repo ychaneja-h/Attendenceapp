@@ -2,39 +2,86 @@ package com.attendance.app.admin.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.attendance.app.core.network.Constants
+import com.attendance.shared.dto.HodProfileDto
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class AdminDashboardViewModel : ViewModel() {
+class AdminDashboardViewModel(
+    private val httpClient: HttpClient
+) : ViewModel() {
+    private val _pendingHods = MutableStateFlow<List<HodProfileDto>>(emptyList())
+    val pendingHods: StateFlow<List<HodProfileDto>> = _pendingHods.asStateFlow()
 
-    private val _uiState = MutableStateFlow<AdminDashboardState>(AdminDashboardState.Loading)
-    val uiState: StateFlow<AdminDashboardState> = _uiState.asStateFlow()
+    private val _activeHods = MutableStateFlow<List<HodProfileDto>>(emptyList())
+    val activeHods: StateFlow<List<HodProfileDto>> = _activeHods.asStateFlow()
 
     init {
-        loadAdminStats()
+        loadHods()
     }
 
-    private fun loadAdminStats() {
+    fun loadHods() {
         viewModelScope.launch {
-            _uiState.value = AdminDashboardState.Success(
-                totalUsers = 1250,
-                activeDepartments = 5,
-                systemHealth = "Operational",
-                flaggedAccounts = 2
-            )
+            try {
+                val pendingResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/pending")
+                if (pendingResponse.status.isSuccess()) {
+                    _pendingHods.value = pendingResponse.body()
+                }
+
+                val activeResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/active")
+                if (activeResponse.status.isSuccess()) {
+                    _activeHods.value = activeResponse.body()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
-}
 
-sealed class AdminDashboardState {
-    object Loading : AdminDashboardState()
-    data class Success(
-        val totalUsers: Int,
-        val activeDepartments: Int,
-        val systemHealth: String,
-        val flaggedAccounts: Int
-    ) : AdminDashboardState()
-    data class Error(val message: String) : AdminDashboardState()
+    fun approveHod(hodId: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/approve")
+                if (response.status.isSuccess()) {
+                    loadHods()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun rejectHod(hodId: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/reject")
+                if (response.status.isSuccess()) {
+                    loadHods()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteHod(hodId: String) {
+        viewModelScope.launch {
+            try {
+                val response = httpClient.delete("${Constants.BASE_URL}/admin/hods/$hodId")
+                if (response.status.isSuccess()) {
+                    loadHods()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 }

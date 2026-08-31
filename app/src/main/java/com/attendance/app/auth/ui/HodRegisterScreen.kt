@@ -18,13 +18,12 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HodRegisterScreen(
-    onOtpRequired: (phone: String, sessionToken: String) -> Unit,
+    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var collegeId by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
     var departmentCode by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -57,9 +56,6 @@ fun HodRegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             AppTextField(value = collegeId, onValueChange = { collegeId = it }, label = "College ID (Unique)")
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AppTextField(value = phone, onValueChange = { phone = it }, label = "Phone Number")
             Spacer(modifier = Modifier.height(16.dp))
 
             AppTextField(value = department, onValueChange = { department = it }, label = "Department Name")
@@ -100,16 +96,15 @@ fun HodRegisterScreen(
                     viewModel.registerHod(
                         name = name,
                         collegeId = collegeId,
-                        phone = phone,
+                        phone = "",
                         department = department,
                         departmentCode = departmentCode,
-                        password = password
-                    ) { sessionToken ->
-                        onOtpRequired(phone, sessionToken)
-                    }
+                        password = password,
+                        onSuccess = onSuccess
+                    )
                 },
                 isLoading = viewModel.isLoading,
-                enabled = name.isNotBlank() && collegeId.isNotBlank() && phone.isNotBlank() && department.isNotBlank() && departmentCode.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() && !viewModel.isLoading
+                enabled = name.isNotBlank() && collegeId.isNotBlank() && department.isNotBlank() && departmentCode.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() && !viewModel.isLoading
             )
         }
     }

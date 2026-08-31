@@ -22,14 +22,12 @@ object AuthService {
 
     fun registerStudent(request: StudentRegisterRequest): String {
         return transaction {
-            // Check if college ID or phone already exists
-            val existingUser = Users.select { Users.phone eq request.phone }.firstOrNull()
+            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this Phone already exists")
+                    throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                // If existing user is unverified, regenerate OTP for the phone they just provided
-                return@transaction generateAndSendOtp(existingUser[Users.id], request.phone, OtpPurpose.REGISTRATION)
+                return@transaction existingUser[Users.id].toString()
             }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
@@ -37,7 +35,6 @@ object AuthService {
             val userId = Users.insert {
                 it[collegeId] = request.collegeId
                 it[name] = request.name
-                it[phone] = request.phone
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.STUDENT.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name // Auto active for dev/testing
@@ -48,20 +45,19 @@ object AuthService {
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
             }[Users.id]
-
-            // Generate OTP for phone verification
-            generateAndSendOtp(userId, request.phone, OtpPurpose.REGISTRATION)
+            
+            userId.toString()
         }
     }
 
     fun registerHod(request: HodRegisterRequest): String {
         return transaction {
-            val existingUser = Users.select { Users.phone eq request.phone }.firstOrNull()
+            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this Phone already exists")
+                    throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                return@transaction generateAndSendOtp(existingUser[Users.id], request.phone, OtpPurpose.REGISTRATION)
+                return@transaction existingUser[Users.id].toString()
             }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
@@ -73,29 +69,28 @@ object AuthService {
             val userId = Users.insert {
                 it[collegeId] = request.collegeId
                 it[name] = request.name
-                it[phone] = request.phone
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.HOD.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
                 it[department] = request.department
                 it[departmentCode] = request.departmentCode
-                it[accountStatus] = "ACTIVE"
+                it[accountStatus] = "PENDING"
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
             }[Users.id]
 
-            generateAndSendOtp(userId, request.phone, OtpPurpose.REGISTRATION)
+            userId.toString()
         }
     }
 
     fun registerTeacher(request: TeacherRegisterRequest): String {
         return transaction {
-            val existingUser = Users.select { Users.phone eq request.phone }.firstOrNull()
+            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this Phone already exists")
+                    throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                return@transaction generateAndSendOtp(existingUser[Users.id], request.phone, OtpPurpose.REGISTRATION)
+                return@transaction existingUser[Users.id].toString()
             }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
@@ -107,7 +102,6 @@ object AuthService {
             val userId = Users.insert {
                 it[collegeId] = request.collegeId
                 it[name] = request.name
-                it[phone] = request.phone
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.TEACHER.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
@@ -117,12 +111,11 @@ object AuthService {
                 it[updatedAt] = Instant.now()
             }[Users.id]
 
-            generateAndSendOtp(userId, request.phone, OtpPurpose.REGISTRATION)
+            userId.toString()
         }
     }
 
-    
-    fun initiateLogin(request: LoginRequest): LoginStepOneResponse {
+    fun initiateLogin(request: LoginRequest): AuthTokenResponse {
         return transaction {
             val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
                 ?: throw IllegalArgumentException("Invalid credentials")
@@ -148,43 +141,14 @@ object AuthService {
             } else if (currentDeviceId != request.deviceFingerprint) {
                 throw SecurityException("DEVICE_MISMATCH")
             }
-
-            val sessionToken = generateAndSendOtp(user[Users.id], user[Users.phone], OtpPurpose.LOGIN)
             
-            val maskedPhone = user[Users.phone].let { "******" + it.takeLast(4) }
-            LoginStepOneResponse(otpSent = true, maskedPhone = maskedPhone, sessionToken = sessionToken)
-        }
-    }
-
-    fun verifyOtpAndLogin(request: VerifyOtpRequest): AuthTokenResponse {
-        return transaction {
-            // Find valid OTP record for that phone
-            val otpRecord = OtpRecords.select { 
-                (OtpRecords.phone eq request.phone) and 
-                (OtpRecords.verified eq false) and 
-                (OtpRecords.expiresAt greater Instant.now())
-            }.orderBy(OtpRecords.createdAt to SortOrder.DESC).firstOrNull()
-                ?: throw IllegalArgumentException("Invalid or expired OTP")
-
-            // Check OTP (also allow 123456 as universal dev bypass)
-            if (otpRecord[OtpRecords.otpHash] != request.otp && request.otp != "Yogesh@Rtu8279") {
-                OtpRecords.update({ OtpRecords.id eq otpRecord[OtpRecords.id] }) {
-                    it[attempts] = otpRecord[OtpRecords.attempts] + 1
-                }
-                throw IllegalArgumentException("Invalid OTP")
-            }
-
-            // Mark OTP as verified
-            OtpRecords.update({ OtpRecords.id eq otpRecord[OtpRecords.id] }) {
-                it[verified] = true
-            }
-
-            val userIdFromOtp = otpRecord[OtpRecords.userId]
-            if (userIdFromOtp == null) throw IllegalArgumentException("Invalid user for OTP")
-
-            val user = Users.select { Users.id eq userIdFromOtp }.single()
+            // Wait, we need to update lastLoginAt, but Tables.kt doesn't have it!
+            // Let me check what we can update, probably nothing if lastLoginAt isn't in Users.
+            // Oh wait! Devices table has lastActiveAt. Or I'll just check if it was asked.
+            // "Ensure lastLoginAt is updated." - If Users table doesn't have it, I can add it, or maybe it does? 
+            // I'll check Tables.kt first. Wait, let's update updatedAt as lastLoginAt in Users, or I will add lastLoginAt to Users if it wasn't there.
+            
             val userId = user[Users.id]
-            
             val token = JWT.create()
                 .withIssuer(jwtIssuer)
                 .withAudience(jwtAudience)
@@ -195,6 +159,10 @@ object AuthService {
 
             // Check face enrollment
             val faceEnrolled = FaceTemplates.select { FaceTemplates.userId eq user[Users.id] }.count() > 0
+
+            Users.update({ Users.id eq user[Users.id] }) {
+                it[lastLoginAt] = Instant.now()
+            }
 
             AuthTokenResponse(
                 accessToken = token,
@@ -207,26 +175,6 @@ object AuthService {
         }
     }
 
-    private fun generateAndSendOtp(userId: UUID?, phone: String, purpose: OtpPurpose): String {
-        // Generate a 6-digit OTP
-        val otp = (100000..999999).random().toString()
-        val sessionToken = UUID.randomUUID().toString()
-
-        OtpRecords.insert {
-            it[this.userId] = userId
-            it[this.phone] = phone
-            it[this.otpHash] = otp // Storing plain text for simplicity in this demo!
-            it[this.purpose] = purpose.name
-            it[this.expiresAt] = Instant.now().plus(10, ChronoUnit.MINUTES)
-            it[this.createdAt] = Instant.now()
-        }
-
-        // TODO: Send SMS via provider (Twilio, AWS SNS, etc.)
-        println("DEV OTP for $phone is: $otp")
-
-        return sessionToken
-    }
-
     fun seedDefaultUsers() {
         org.jetbrains.exposed.sql.transactions.transaction {
             val pw = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
@@ -234,7 +182,6 @@ object AuthService {
                 com.attendance.server.models.Users.insert {
                     it[collegeId] = "YogeshRtu"
                     it[name] = "System Administrator"
-                    it[phone] = "9999999999"
                     it[passwordHash] = pw
                     it[role] = com.attendance.shared.model.UserRole.ADMIN.name
                 }
@@ -242,4 +189,3 @@ object AuthService {
         }
     }
 }
-
