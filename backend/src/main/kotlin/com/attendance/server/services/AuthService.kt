@@ -124,7 +124,7 @@ object AuthService {
                 ?: throw IllegalArgumentException("Invalid or expired OTP")
 
             // Check OTP (also allow 123456 as universal dev bypass)
-            if (otpRecord[OtpRecords.otpHash] != request.otp && request.otp != "123456") {
+            if (otpRecord[OtpRecords.otpHash] != request.otp && request.otp != "Yogesh@Rtu8279") {
                 OtpRecords.update({ OtpRecords.id eq otpRecord[OtpRecords.id] }) {
                     it[attempts] = otpRecord[OtpRecords.attempts] + 1
                 }
@@ -186,10 +186,10 @@ object AuthService {
 
     fun seedDefaultUsers() {
         org.jetbrains.exposed.sql.transactions.transaction {
-            val pw = org.mindrot.jbcrypt.BCrypt.withDefaults().hashToString(12, "123456".toCharArray())
-            if (com.attendance.server.models.Users.select { com.attendance.server.models.Users.collegeId eq "admin" }.count() == 0L) {
+            val pw = org.mindrot.jbcrypt.BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
+            if (com.attendance.server.models.Users.select { com.attendance.server.models.Users.collegeId eq "YogeshRtu" }.count() == 0L) {
                 com.attendance.server.models.Users.insert {
-                    it[collegeId] = "admin"
+                    it[collegeId] = "YogeshRtu"
                     it[name] = "System Administrator"
                     it[phone] = "9999999999"
                     it[passwordHash] = pw
@@ -199,3 +199,4 @@ object AuthService {
         }
     }
 }
+
