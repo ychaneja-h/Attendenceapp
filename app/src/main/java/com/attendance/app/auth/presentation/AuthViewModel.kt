@@ -56,7 +56,6 @@ class AuthViewModel(
     fun register(
         name: String,
         collegeId: String,
-        phone: String,
         department: String,
         section: String,
         semester: Int,
@@ -130,5 +129,6 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
 
 

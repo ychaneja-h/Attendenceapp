@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -92,7 +92,6 @@ fun StudentRegisterScreen(
                     viewModel.register(
                         name = name.trim(),
                         collegeId = collegeId,
-                        phone = "",
                         department = department,
                         section = section,
                         semester = sem,
@@ -108,3 +107,4 @@ fun StudentRegisterScreen(
         }
     }
 }
+

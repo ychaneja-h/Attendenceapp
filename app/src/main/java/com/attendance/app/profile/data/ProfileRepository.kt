@@ -1,4 +1,4 @@
-package com.attendance.app.profile.data
+﻿package com.attendance.app.profile.data
 
 import com.attendance.app.auth.data.TokenManager
 import com.attendance.app.core.network.Constants
@@ -59,12 +59,12 @@ class ProfileRepository(
         }
     }
 
-    suspend fun updateProfile(name: String, email: String, phone: String, department: String? = null, section: String? = null, batch: String? = null, year: String? = null, photoUrl: String? = null): Result<ProfileResponse> {
+    suspend fun updateProfile(name: String, email: String, department: String? = null, section: String? = null, batch: String? = null, year: String? = null, photoUrl: String? = null): Result<ProfileResponse> {
         return try {
             val token = tokenManager.getToken()
                 ?: return Result.failure(Exception("Not authenticated"))
 
-            val request = UpdateProfileRequest(name = name, email = email, phone = phone, department = department, section = section, batch = batch, year = year, photoUrl = photoUrl)
+            val request = UpdateProfileRequest(name = name, email = email, department = department, section = section, batch = batch, year = year, photoUrl = photoUrl)
 
             val response = httpClient.put(baseUrl) {
                 header(HttpHeaders.Authorization, "Bearer $token")
@@ -128,4 +128,5 @@ data class StudentSummaryResponse(
     val totalPresent: Int,
     val totalAbsent: Int
 )
+
 

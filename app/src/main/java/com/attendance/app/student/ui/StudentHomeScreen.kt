@@ -149,8 +149,7 @@ fun StudentHomeScreen(
                             Column {
                                 Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                                Text(profile.phone, style = MaterialTheme.typography.bodySmall)
-                            }
+                                }
                         }
                     }
 
@@ -263,6 +262,7 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
 
 
 

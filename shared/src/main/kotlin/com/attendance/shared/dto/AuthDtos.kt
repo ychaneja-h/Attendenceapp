@@ -1,4 +1,4 @@
-package com.attendance.shared.dto
+﻿package com.attendance.shared.dto
 
 import kotlinx.serialization.Serializable
 
@@ -31,12 +31,6 @@ data class TeacherRegisterRequest(
 )
 
 @Serializable
-data class VerifyPhoneRequest(
-    val phone: String,
-    val otp: String
-)
-
-@Serializable
 data class LoginRequest(
     val collegeId: String,
     val password: String,
@@ -64,3 +58,4 @@ data class ErrorResponse(
     val error: String,
     val message: String
 )
+

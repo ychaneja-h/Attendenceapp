@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.ui
+﻿package com.attendance.app.teacher.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,7 +31,6 @@ fun TeacherProfileScreen(
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
     var section by remember { mutableStateOf("") }
     var batch by remember { mutableStateOf("") }
@@ -43,7 +42,6 @@ fun TeacherProfileScreen(
             val profile = (uiState as ProfileUiState.Success).profile
             name = profile.name
             email = profile.email
-            phone = profile.phone
             department = profile.department ?: ""
             section = profile.section ?: ""
             batch = profile.batch ?: ""
@@ -80,7 +78,7 @@ fun TeacherProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = { profileViewModel.updateProfile(name, email, phone, department, section, batch, year, photoUrl) },
+                        onClick = { profileViewModel.updateProfile(name, email, department, section, batch, year, photoUrl) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSaving
                     ) {
@@ -122,3 +120,4 @@ fun TeacherProfileScreen(
         }
     }
 }
+

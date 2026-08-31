@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.ui
+﻿package com.attendance.app.teacher.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothManager
@@ -141,8 +141,7 @@ fun TeacherHomeScreen(
                         Column {
                             Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                            Text(profile.phone, style = MaterialTheme.typography.bodySmall)
-                        }
+                            }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -264,3 +263,4 @@ fun TeacherBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 4, onClick = { navController.navigate(Screen.TeacherProfile) { launchSingleTop = true } })
     }
 }
+

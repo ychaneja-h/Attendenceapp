@@ -1,4 +1,4 @@
-package com.attendance.app.profile.presentation
+﻿package com.attendance.app.profile.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -52,11 +52,11 @@ class ProfileViewModel(
         }
     }
 
-    fun updateProfile(name: String, email: String, phone: String, department: String? = null, section: String? = null, batch: String? = null, year: String? = null, photoUrl: String? = null) {
+    fun updateProfile(name: String, email: String, department: String? = null, section: String? = null, batch: String? = null, year: String? = null, photoUrl: String? = null) {
         viewModelScope.launch {
             _isSaving.value = true
             _saveMessage.value = null
-            val result = repository.updateProfile(name, email, phone, department, section, batch, year, photoUrl)
+            val result = repository.updateProfile(name, email, department, section, batch, year, photoUrl)
             if (result.isSuccess) {
                 _uiState.value = ProfileUiState.Success(result.getOrNull()!!)
                 _saveMessage.value = "Profile updated successfully!"
@@ -86,3 +86,4 @@ class ProfileViewModel(
         _saveMessage.value = null
     }
 }
+

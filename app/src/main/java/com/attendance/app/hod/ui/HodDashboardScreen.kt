@@ -1,4 +1,4 @@
-package com.attendance.app.hod.ui
+﻿package com.attendance.app.hod.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -78,8 +78,7 @@ fun HodDashboardScreen(
                         Column {
                             Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                            Text(profile.phone, style = MaterialTheme.typography.bodySmall)
-                        }
+                            }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -156,3 +155,4 @@ fun HodBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 3, onClick = { navController.navigate(Screen.HodProfile) { launchSingleTop = true } })
     }
 }
+
