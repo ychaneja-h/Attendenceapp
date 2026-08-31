@@ -14,7 +14,7 @@ object DatabaseConfig {
             driverClassName = "org.postgresql.Driver"
             username = System.getenv("DB_USER") ?: "postgres"
             password = System.getenv("DB_PASSWORD") ?: "123456"
-            maximumPoolSize = 10
+            maximumPoolSize = 5
             isAutoCommit = false
             transactionIsolation = "TRANSACTION_REPEATABLE_READ"
         }
@@ -25,7 +25,6 @@ object DatabaseConfig {
             SchemaUtils.createMissingTablesAndColumns(
                 Users,
                 Devices,
-                OtpRecords,
                 Departments,
                 AcademicYears,
                 Classes,
@@ -47,4 +46,3 @@ object DatabaseConfig {
         }
     }
 }
-

@@ -3,7 +3,6 @@ package com.attendance.server.services
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.attendance.server.models.*
 import com.attendance.shared.dto.*
-import com.attendance.shared.model.OtpPurpose
 import com.attendance.shared.model.RegistrationStatus
 import com.attendance.shared.model.UserRole
 import com.auth0.jwt.JWT
@@ -20,14 +19,34 @@ object AuthService {
     private val jwtIssuer = System.getenv("JWT_ISSUER") ?: "attendance-server"
     private val jwtAudience = System.getenv("JWT_AUDIENCE") ?: "attendance-app"
 
-    fun registerStudent(request: StudentRegisterRequest): String {
+    private fun generateToken(userId: UUID, role: String): String {
+        return JWT.create()
+            .withIssuer(jwtIssuer)
+            .withAudience(jwtAudience)
+            .withClaim("userId", userId.toString())
+            .withClaim("role", role)
+            .withExpiresAt(Date.from(Instant.now().plus(7, ChronoUnit.DAYS)))
+            .sign(Algorithm.HMAC256(jwtSecret))
+    }
+
+    fun registerStudent(request: StudentRegisterRequest): AuthTokenResponse {
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
                     throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                return@transaction existingUser[Users.id].toString()
+                // Return token for existing pending user
+                val uid = existingUser[Users.id]
+                val token = generateToken(uid, existingUser[Users.role])
+                return@transaction AuthTokenResponse(
+                    accessToken = token,
+                    refreshToken = token,
+                    role = existingUser[Users.role],
+                    userId = uid.toString(),
+                    name = existingUser[Users.name],
+                    requiresFaceEnrollment = true
+                )
             }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
@@ -37,7 +56,8 @@ object AuthService {
                 it[name] = request.name
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.STUDENT.name
-                it[registrationStatus] = RegistrationStatus.ACTIVE.name // Auto active for dev/testing
+                it[registrationStatus] = RegistrationStatus.ACTIVE.name
+                it[accountStatus] = "ACTIVE"
                 it[department] = request.department
                 it[section] = request.section
                 it[semester] = request.semester
@@ -45,19 +65,35 @@ object AuthService {
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
             }[Users.id]
-            
-            userId.toString()
+
+            val token = generateToken(userId, UserRole.STUDENT.name)
+            AuthTokenResponse(
+                accessToken = token,
+                refreshToken = token,
+                role = UserRole.STUDENT.name,
+                userId = userId.toString(),
+                name = request.name,
+                requiresFaceEnrollment = true
+            )
         }
     }
 
-    fun registerHod(request: HodRegisterRequest): String {
+    fun registerHod(request: HodRegisterRequest): AuthTokenResponse {
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
                     throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                return@transaction existingUser[Users.id].toString()
+                val uid = existingUser[Users.id]
+                return@transaction AuthTokenResponse(
+                    accessToken = "",
+                    refreshToken = "",
+                    role = UserRole.HOD.name,
+                    userId = uid.toString(),
+                    name = existingUser[Users.name],
+                    requiresFaceEnrollment = false
+                )
             }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
@@ -79,18 +115,33 @@ object AuthService {
                 it[updatedAt] = Instant.now()
             }[Users.id]
 
-            userId.toString()
+            AuthTokenResponse(
+                accessToken = "",
+                refreshToken = "",
+                role = UserRole.HOD.name,
+                userId = userId.toString(),
+                name = request.name,
+                requiresFaceEnrollment = false
+            )
         }
     }
 
-    fun registerTeacher(request: TeacherRegisterRequest): String {
+    fun registerTeacher(request: TeacherRegisterRequest): AuthTokenResponse {
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
             if (existingUser != null) {
                 if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
                     throw IllegalArgumentException("Account with this College ID already exists")
                 }
-                return@transaction existingUser[Users.id].toString()
+                val uid = existingUser[Users.id]
+                return@transaction AuthTokenResponse(
+                    accessToken = "",
+                    refreshToken = "",
+                    role = UserRole.TEACHER.name,
+                    userId = uid.toString(),
+                    name = existingUser[Users.name],
+                    requiresFaceEnrollment = false
+                )
             }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
@@ -111,7 +162,14 @@ object AuthService {
                 it[updatedAt] = Instant.now()
             }[Users.id]
 
-            userId.toString()
+            AuthTokenResponse(
+                accessToken = "",
+                refreshToken = "",
+                role = UserRole.TEACHER.name,
+                userId = userId.toString(),
+                name = request.name,
+                requiresFaceEnrollment = false
+            )
         }
     }
 
@@ -119,7 +177,7 @@ object AuthService {
         return transaction {
             val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
                 ?: throw IllegalArgumentException("Invalid credentials")
-            
+
             val result = BCrypt.verifyer().verify(request.password.toCharArray(), user[Users.passwordHash])
             if (!result.verified) {
                 throw IllegalArgumentException("Invalid credentials")
@@ -141,32 +199,19 @@ object AuthService {
             } else if (currentDeviceId != request.deviceFingerprint) {
                 throw SecurityException("DEVICE_MISMATCH")
             }
-            
-            // Wait, we need to update lastLoginAt, but Tables.kt doesn't have it!
-            // Let me check what we can update, probably nothing if lastLoginAt isn't in Users.
-            // Oh wait! Devices table has lastActiveAt. Or I'll just check if it was asked.
-            // "Ensure lastLoginAt is updated." - If Users table doesn't have it, I can add it, or maybe it does? 
-            // I'll check Tables.kt first. Wait, let's update updatedAt as lastLoginAt in Users, or I will add lastLoginAt to Users if it wasn't there.
-            
+
             val userId = user[Users.id]
-            val token = JWT.create()
-                .withIssuer(jwtIssuer)
-                .withAudience(jwtAudience)
-                .withClaim("userId", userId.toString())
-                .withClaim("role", user[Users.role])
-                .withExpiresAt(Date.from(Instant.now().plus(7, ChronoUnit.DAYS)))
-                .sign(Algorithm.HMAC256(jwtSecret))
+            val token = generateToken(userId, user[Users.role])
 
-            // Check face enrollment
-            val faceEnrolled = FaceTemplates.select { FaceTemplates.userId eq user[Users.id] }.count() > 0
+            val faceEnrolled = FaceTemplates.select { FaceTemplates.userId eq userId }.count() > 0
 
-            Users.update({ Users.id eq user[Users.id] }) {
+            Users.update({ Users.id eq userId }) {
                 it[lastLoginAt] = Instant.now()
             }
 
             AuthTokenResponse(
                 accessToken = token,
-                refreshToken = token, // Simplified
+                refreshToken = token,
                 role = user[Users.role],
                 userId = userId.toString(),
                 name = user[Users.name],
@@ -176,14 +221,18 @@ object AuthService {
     }
 
     fun seedDefaultUsers() {
-        org.jetbrains.exposed.sql.transactions.transaction {
-            val pw = at.favre.lib.crypto.bcrypt.BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
-            if (com.attendance.server.models.Users.select { com.attendance.server.models.Users.collegeId eq "YogeshRtu" }.count() == 0L) {
-                com.attendance.server.models.Users.insert {
+        transaction {
+            val pw = BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
+            if (Users.select { Users.collegeId eq "YogeshRtu" }.count() == 0L) {
+                Users.insert {
                     it[collegeId] = "YogeshRtu"
                     it[name] = "System Administrator"
                     it[passwordHash] = pw
-                    it[role] = com.attendance.shared.model.UserRole.ADMIN.name
+                    it[role] = UserRole.ADMIN.name
+                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
+                    it[accountStatus] = "ACTIVE"
+                    it[createdAt] = Instant.now()
+                    it[updatedAt] = Instant.now()
                 }
             }
         }

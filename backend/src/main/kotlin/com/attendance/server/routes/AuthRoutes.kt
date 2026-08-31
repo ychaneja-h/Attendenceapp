@@ -13,8 +13,8 @@ fun Route.authRoutes() {
         post("/student/register") {
             try {
                 val request = call.receive<StudentRegisterRequest>()
-                val sessionToken = AuthService.registerStudent(request)
-                call.respond(HttpStatusCode.Created, mapOf("sessionToken" to sessionToken))
+                val response = AuthService.registerStudent(request)
+                call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
             }
@@ -23,22 +23,23 @@ fun Route.authRoutes() {
         post("/teacher/register") {
             try {
                 val request = call.receive<TeacherRegisterRequest>()
-                val sessionToken = AuthService.registerTeacher(request)
-                call.respond(HttpStatusCode.Created, mapOf("sessionToken" to sessionToken))
+                val response = AuthService.registerTeacher(request)
+                call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
             }
         }
+
         post("/hod/register") {
             try {
                 val request = call.receive<HodRegisterRequest>()
-                val sessionToken = AuthService.registerHod(request)
-                call.respond(HttpStatusCode.Created, mapOf("sessionToken" to sessionToken))
+                val response = AuthService.registerHod(request)
+                call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
             }
         }
-        
+
         post("/login") {
             handleLogin(call)
         }
@@ -54,7 +55,6 @@ fun Route.authRoutes() {
         post("/admin/login") {
             handleLogin(call)
         }
-        
     }
 }
 
