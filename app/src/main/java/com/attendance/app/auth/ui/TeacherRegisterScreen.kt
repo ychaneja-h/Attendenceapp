@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +18,6 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeacherRegisterScreen(
-    onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
@@ -26,6 +25,21 @@ fun TeacherRegisterScreen(
     var facultyId by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showPendingDialog by remember { mutableStateOf(false) }
+
+    if (showPendingDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Registration Successful") },
+            text = { Text("Your account is pending HOD approval.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPendingDialog = false
+                    onBack()
+                }) { Text("OK") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -72,10 +86,9 @@ fun TeacherRegisterScreen(
                     viewModel.registerTeacher(
                         name = name,
                         collegeId = facultyId,
-                        phone = "",
                         departmentCode = department,
                         password = password,
-                        onSuccess = onSuccess
+                        onPendingApproval = { showPendingDialog = true }
                     )
                 },
                 isLoading = viewModel.isLoading,
@@ -84,3 +97,5 @@ fun TeacherRegisterScreen(
         }
     }
 }
+
+

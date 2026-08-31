@@ -1,4 +1,4 @@
-package com.attendance.app.core.ui.navigation
+﻿package com.attendance.app.core.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -87,7 +87,7 @@ fun AppNavHost() {
         }
         composable<Screen.TeacherRegister> {
             TeacherRegisterScreen(
-                onSuccess = handleAuthSuccess,
+                
                 onBack = { navController.popBackStack() }
             )
         }
@@ -99,7 +99,7 @@ fun AppNavHost() {
         }
         composable<Screen.HodRegister> {
             HodRegisterScreen(
-                onSuccess = handleAuthSuccess,
+                
                 onBack = { navController.popBackStack() }
             )
         }
@@ -227,3 +227,5 @@ fun AppNavHost() {
         }
     }
 }
+
+

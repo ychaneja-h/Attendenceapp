@@ -87,14 +87,7 @@ class AuthViewModel(
         }
     }
 
-    fun registerTeacher(
-        name: String,
-        collegeId: String,
-        phone: String,
-        departmentCode: String,
-        password: String,
-        onSuccess: (role: String, requiresFace: Boolean) -> Unit
-    ) {
+    fun registerTeacher(name: String, collegeId: String, password: String, departmentCode: String, onPendingApproval: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
             error = null
@@ -106,24 +99,14 @@ class AuthViewModel(
                     departmentCode = departmentCode
                 )
             )
-            result.onSuccess { response ->
-                onSuccess(response.role, response.requiresFaceEnrollment)
-            }.onFailure { e ->
+            result.onSuccess { onPendingApproval() }.onFailure { e ->
                 error = e.message ?: "Registration failed"
             }
             isLoading = false
         }
     }
 
-    fun registerHod(
-        name: String,
-        collegeId: String,
-        phone: String,
-        department: String,
-        departmentCode: String,
-        password: String,
-        onSuccess: (role: String, requiresFace: Boolean) -> Unit
-    ) {
+    fun registerHod(name: String, collegeId: String, password: String, department: String, departmentCode: String, onPendingApproval: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
             error = null
@@ -136,9 +119,7 @@ class AuthViewModel(
                     departmentCode = departmentCode
                 )
             )
-            result.onSuccess { response ->
-                onSuccess(response.role, response.requiresFaceEnrollment)
-            }.onFailure { e ->
+            result.onSuccess { onPendingApproval() }.onFailure { e ->
                 error = e.message ?: "Registration failed"
             }
             isLoading = false
@@ -149,4 +130,5 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
 
