@@ -80,7 +80,11 @@ class StudentAttendanceViewModel(
                     method = "BLE+FACE",
                     syncStatus = "PENDING"
                 )
-                attendanceDao.insertRecord(record)
+                                attendanceDao.insertRecord(record)
+                
+                // Immediately trigger sync
+                val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.attendance.app.core.data.sync.AttendanceSyncWorker>().build()
+                androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
                 
                 _scanStatus.value = "Attendance System Active. You are checked in."
                 _attendanceAction.value = AttendanceAction.Completed
@@ -96,7 +100,11 @@ class StudentAttendanceViewModel(
                     method = "FACE_CHECK_OUT",
                     syncStatus = "PENDING"
                 )
-                attendanceDao.insertRecord(record)
+                                attendanceDao.insertRecord(record)
+                
+                // Immediately trigger sync for checkout
+                val workRequest2 = androidx.work.OneTimeWorkRequestBuilder<com.attendance.app.core.data.sync.AttendanceSyncWorker>().build()
+                androidx.work.WorkManager.getInstance(context).enqueue(workRequest2)
                 
                 pulseJob?.cancel()
                 getSharedPrefs(context).edit().remove("active_class_id").apply()
@@ -171,4 +179,5 @@ sealed class AttendanceAction {
     data class RequireFaceVerification(val classId: String, val isCheckOut: Boolean = false) : AttendanceAction()
     object Completed : AttendanceAction()
 }
+
 

@@ -36,11 +36,11 @@ fun Route.requestRoutes() {
 
             post("/face") {
                 try {
-                    val principal = call.principal<JWTPrincipal>()
+                                        val principal = call.principal<JWTPrincipal>()
                     val studentId = UUID.fromString(principal!!.payload.getClaim("userId").asString())
                     val req = call.receive<FaceRegistrationReq>()
-                    requestService.createRequest(studentId, "FACE_REGISTRATION", req.faceEmbeddingJSON)
-                    call.respond(HttpStatusCode.Created, mapOf("status" to "success"))
+                    val result = requestService.createFaceRequest(studentId, req.faceEmbeddingJSON)
+                    call.respond(HttpStatusCode.Created, mapOf("status" to result))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
                 }
@@ -88,4 +88,5 @@ fun Route.requestRoutes() {
         }
     }
 }
+
 
