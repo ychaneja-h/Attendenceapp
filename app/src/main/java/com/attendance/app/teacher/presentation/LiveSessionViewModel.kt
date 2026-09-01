@@ -78,20 +78,20 @@ class LiveSessionViewModel(
         }
     }
 
-        fun loadSession(classId: String) {
+        fun loadSession(classId: String, startTime: Long) {
         activeClassId = classId
         viewModelScope.launch {
             _uiState.value = LiveSessionUiState.Active(
                 classId = classId,
                 totalEnrolled = 0 // Will update from local roster
             )
-            observeOfflineSession(classId)
+            observeOfflineSession(classId, startTime)
         }
     }
     
-    private suspend fun observeOfflineSession(classId: String) {
+    private suspend fun observeOfflineSession(classId: String, startTime: Long) {
         combine(
-            attendanceDao.getRecordsForClass(classId),
+            attendanceDao.getRecordsForClassSince(classId, startTime),
             studentDao.getStudentsForClass(classId)
         ) { records, students ->
             val totalEnrolled = students.size
@@ -105,7 +105,9 @@ class LiveSessionViewModel(
             val studentMap = students.associateBy { it.id }
             val groupedRecords = records.groupBy { it.studentId }
             
-            groupedRecords.map { (studentId, studentRecords) ->
+            groupedRecords.map { entry ->
+                val studentId = entry.key
+                val studentRecords = entry.value
                 val sortedRecords = studentRecords.sortedBy { it.timestamp }
                 var currentChecks = 1
                 var lastCountedTime = sortedRecords.first().timestamp
@@ -119,14 +121,17 @@ class LiveSessionViewModel(
                     }
                 }
                 
-                val studentName = studentMap[studentId]?.studentName ?: "Unknown Student"
+                                val studentName = studentMap[studentId]?.studentName ?: "Unknown Student"
+                val manualRecord = studentRecords.find { it.method.startsWith("MANUAL_") }
+                val manualStatus = manualRecord?.method?.removePrefix("MANUAL_")
                 
                 StudentPresentInfo(
                     studentId = studentId,
                     name = studentName,
                     timeVerified = sortedRecords.first().timestamp,
                     isFaceVerified = true,
-                    successfulChecks = currentChecks
+                    successfulChecks = currentChecks,
+                    manualStatus = manualStatus
                 )
             }.sortedByDescending { it.timeVerified }
         }.collect { mappedList ->
@@ -171,7 +176,8 @@ data class StudentPresentInfo(
     val name: String,
     val timeVerified: Long,
     val isFaceVerified: Boolean,
-    val successfulChecks: Int
+    val successfulChecks: Int,
+    val manualStatus: String? = null
 )
 
 @Serializable
@@ -188,6 +194,11 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
+
+
+
+
+
 
 
 

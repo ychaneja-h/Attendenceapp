@@ -18,9 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.attendance.app.core.data.local.room.AttendanceDao
+
 class TeacherReviewsViewModel(
     private val httpClient: HttpClient,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val attendanceDao: AttendanceDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ReviewUiState>(ReviewUiState.Loading)
@@ -51,28 +54,26 @@ class TeacherReviewsViewModel(
         }
     }
 
-    fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String) {
+        fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String) {
         val cid = currentClassId ?: return
         viewModelScope.launch {
             try {
-                val token = tokenManager.getToken()
-                if (token != null) {
-                    @kotlinx.serialization.Serializable
-                    data class OverrideRequest(val classId: String, val studentId: String, val status: String, val reason: String)
-                    
-                    val response = httpClient.post("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/override") {
-
-                        contentType(ContentType.Application.Json)
-                        setBody(OverrideRequest(cid, studentId, newStatus, reason))
-                    }
-                    if (response.status.isSuccess()) {
-                        // Remove from local list
-                        val currentState = _uiState.value
-                        if (currentState is ReviewUiState.Success) {
-                            val updatedList = currentState.items.filterNot { it.recordId == recordId }
-                            _uiState.value = ReviewUiState.Success(updatedList)
-                        }
-                    }
+                attendanceDao.insertRecord(
+                    com.attendance.app.core.data.local.room.AttendanceRecordEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        classId = cid,
+                        studentId = studentId,
+                        timestamp = System.currentTimeMillis(),
+                        isPresent = newStatus == "PRESENT",
+                        method = "MANUAL_",
+                        syncStatus = "PENDING"
+                    )
+                )
+                // Remove from local list
+                val currentState = _uiState.value
+                if (currentState is ReviewUiState.Success) {
+                    val updatedList = currentState.items.filterNot { it.recordId == recordId || it.studentId == studentId }
+                    _uiState.value = ReviewUiState.Success(updatedList)
                 }
             } catch (e: Exception) {
                 // Ignore error for now
@@ -94,4 +95,7 @@ data class ReviewItem(
     val studentName: String,
     val issueType: String
 )
+
+
+
 

@@ -51,7 +51,8 @@ val appModule = module {
 
     viewModel { TeacherAttendanceViewModel(get(), get(), get()) }
     viewModel { LiveSessionViewModel(get(), get(), get(), get()) }
-    viewModel { TeacherReviewsViewModel(get(), get()) }
+    viewModel { com.attendance.app.teacher.presentation.TeacherHistoryViewModel(get(), get()) }
+    viewModel { TeacherReviewsViewModel(get(), get(), get()) }
     viewModel { ProfileViewModel(get()) }
     viewModel { com.attendance.app.face.presentation.FaceRegistrationViewModel(get()) }
     viewModel { com.attendance.app.hod.presentation.HodDashboardViewModel(get(), get()) }
@@ -100,6 +101,8 @@ val networkModule = module {
     }
  
 }
+
+
 
 
 

@@ -38,9 +38,12 @@ class TeacherAttendanceViewModel(
     private val _isAdvertising = MutableStateFlow(false)
     val isAdvertising: StateFlow<Boolean> = _isAdvertising.asStateFlow()
 
-    private val _activeClassId = MutableStateFlow<String?>(null)
+        private val _activeClassId = MutableStateFlow<String?>(null)
     val activeClassIdFlow: StateFlow<String?> = _activeClassId.asStateFlow()
     val activeClassId: String? get() = _activeClassId.value
+
+    private val _activeSessionStartTime = MutableStateFlow<Long>(0L)
+    val activeSessionStartTime: StateFlow<Long> = _activeSessionStartTime.asStateFlow()
 
     var isStartingSession by mutableStateOf(false)
         private set
@@ -57,6 +60,7 @@ class TeacherAttendanceViewModel(
             sessionError = null
             
             _activeClassId.value = classId
+            _activeSessionStartTime.value = System.currentTimeMillis()
             BleScannerService.start(context, classId)
             
             if (!isReceiverRegistered) {
@@ -139,6 +143,8 @@ class TeacherAttendanceViewModel(
         
         _isAdvertising.value = false
         _activeClassId.value = null
+        _activeSessionStartTime.value = 0L
     }
 }
+
 

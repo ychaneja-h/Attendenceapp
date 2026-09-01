@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.ui
+﻿package com.attendance.app.teacher.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,7 +34,7 @@ fun LiveSessionScreen(
     val recheckInterval by liveSessionViewModel.recheckIntervalMinutes.collectAsState()
 
     LaunchedEffect(classId) {
-        liveSessionViewModel.loadSession(classId)
+        liveSessionViewModel.loadSession(classId, attendanceViewModel.activeSessionStartTime.value)
     }
 
     Scaffold(
@@ -166,3 +166,5 @@ fun LiveSessionScreen(
         }
     }
 }
+
+

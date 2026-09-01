@@ -48,6 +48,7 @@ fun TeacherHomeScreen(
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
     val classes by classViewModel.classes.collectAsState()
+    val activeClassId by attendanceViewModel.activeClassIdFlow.collectAsState()
     val isAdvertising by attendanceViewModel.isAdvertising.collectAsState()
     val context = LocalContext.current
 
@@ -155,7 +156,7 @@ fun TeacherHomeScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(classes) { cls ->
-                        val isActive = attendanceViewModel.activeClassId == cls.id
+                        val isActive = activeClassId == cls.id
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -263,4 +264,5 @@ fun TeacherBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 4, onClick = { navController.navigate(Screen.TeacherProfile) { launchSingleTop = true } })
     }
 }
+
 
