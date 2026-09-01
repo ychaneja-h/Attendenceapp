@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -43,7 +44,7 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
                     setBody(mapOf("faceEmbeddingJSON" to embeddingJsonString))
                 }
                 if (response.status.isSuccess()) {
-                    val respText = io.ktor.client.statement.bodyAsText(response)
+                    val respText = response.bodyAsText()
                     if (respText.contains("auto-approved")) {
                         prefs.edit()
                             .putString("registered_face_embedding", embeddingJson)
@@ -74,5 +75,6 @@ sealed class FaceRegState {
     object Success : FaceRegState()
     object Error : FaceRegState()
 }
+
 
 
