@@ -1,4 +1,4 @@
-package com.attendance.server.config
+﻿package com.attendance.server.config
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -25,7 +25,7 @@ object DatabaseConfig {
             maximumPoolSize = 3
             minimumIdle = 1
             isAutoCommit = false
-            transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            // transactionIsolation removed for Supabase pooler compatibility
             connectionTimeout = 30000
             idleTimeout = 600000
             maxLifetime = 1800000
@@ -58,3 +58,4 @@ object DatabaseConfig {
         }
     }
 }
+

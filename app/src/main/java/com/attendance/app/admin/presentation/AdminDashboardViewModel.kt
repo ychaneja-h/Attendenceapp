@@ -1,4 +1,4 @@
-package com.attendance.app.admin.presentation
+﻿package com.attendance.app.admin.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AdminDashboardViewModel(
+    private val tokenManager: com.attendance.app.auth.data.TokenManager,
     private val httpClient: HttpClient
 ) : ViewModel() {
     private val _pendingHods = MutableStateFlow<List<HodProfileDto>>(emptyList())
@@ -31,12 +32,12 @@ class AdminDashboardViewModel(
     fun loadHods() {
         viewModelScope.launch {
             try {
-                val pendingResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/pending")
+                val pendingResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/pending") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (pendingResponse.status.isSuccess()) {
                     _pendingHods.value = pendingResponse.body()
                 }
 
-                val activeResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/active")
+                val activeResponse = httpClient.get("${Constants.BASE_URL}/admin/hods/active") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (activeResponse.status.isSuccess()) {
                     _activeHods.value = activeResponse.body()
                 }
@@ -49,7 +50,7 @@ class AdminDashboardViewModel(
     fun approveHod(hodId: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/approve")
+                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/approve") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     loadHods()
                 }
@@ -62,7 +63,7 @@ class AdminDashboardViewModel(
     fun rejectHod(hodId: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/reject")
+                val response = httpClient.post("${Constants.BASE_URL}/admin/hods/$hodId/reject") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     loadHods()
                 }
@@ -75,7 +76,7 @@ class AdminDashboardViewModel(
     fun deleteHod(hodId: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.delete("${Constants.BASE_URL}/admin/hods/$hodId")
+                val response = httpClient.delete("${Constants.BASE_URL}/admin/hods/$hodId") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     loadHods()
                 }
@@ -85,3 +86,4 @@ class AdminDashboardViewModel(
         }
     }
 }
+

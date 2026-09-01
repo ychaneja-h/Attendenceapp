@@ -1,4 +1,4 @@
-package com.attendance.app.hod.presentation
+﻿package com.attendance.app.hod.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class HodDashboardViewModel(
+    private val tokenManager: com.attendance.app.auth.data.TokenManager,
     private val httpClient: HttpClient
 ) : ViewModel() {
 
@@ -52,12 +53,12 @@ class HodDashboardViewModel(
     fun fetchTeachers() {
         viewModelScope.launch {
             try {
-                val response = httpClient.get("${Constants.BASE_URL}/hod/teachers/pending")
+                val response = httpClient.get("${Constants.BASE_URL}/hod/teachers/pending") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     _pendingTeachers.value = response.body()
                 }
                 
-                val activeResponse = httpClient.get("${Constants.BASE_URL}/hod/teachers/active")
+                val activeResponse = httpClient.get("${Constants.BASE_URL}/hod/teachers/active") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (activeResponse.status.isSuccess()) {
                     _activeTeachers.value = activeResponse.body()
                 }
@@ -70,7 +71,7 @@ class HodDashboardViewModel(
     fun approveTeacher(id: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/approve")
+                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/approve") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     fetchTeachers()
                 }
@@ -83,7 +84,7 @@ class HodDashboardViewModel(
     fun rejectTeacher(id: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/reject")
+                val response = httpClient.post("${Constants.BASE_URL}/hod/teachers/$id/reject") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     fetchTeachers()
                 }
@@ -96,7 +97,7 @@ class HodDashboardViewModel(
     fun deleteTeacher(id: String) {
         viewModelScope.launch {
             try {
-                val response = httpClient.delete("${Constants.BASE_URL}/hod/teachers/$id")
+                val response = httpClient.delete("${Constants.BASE_URL}/hod/teachers/$id") { io.ktor.client.request.header("Authorization", "Bearer ${tokenManager.getToken()}") }
                 if (response.status.isSuccess()) {
                     fetchTeachers()
                 }
@@ -117,3 +118,4 @@ sealed class HodDashboardState {
     ) : HodDashboardState()
     data class Error(val message: String) : HodDashboardState()
 }
+
