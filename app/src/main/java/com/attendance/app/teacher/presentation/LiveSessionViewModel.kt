@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.presentation
+﻿package com.attendance.app.teacher.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -54,7 +54,7 @@ class LiveSessionViewModel(
                     )
                     
                     if (token != null) {
-                        header(HttpHeaders.Authorization, "Bearer $token")
+
                     }
                     contentType(ContentType.Application.Json)
                     setBody(StartSessionRequest(
@@ -89,7 +89,7 @@ class LiveSessionViewModel(
                 val token = tokenManager.getToken()
                 val response = httpClient.get("${Constants.BASE_URL}/attendance/live/$classId") {
                     if (token != null) {
-                        header(HttpHeaders.Authorization, "Bearer $token")
+
                     }
                 }
                 
@@ -170,3 +170,4 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
+

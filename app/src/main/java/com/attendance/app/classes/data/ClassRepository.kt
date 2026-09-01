@@ -1,4 +1,4 @@
-package com.attendance.app.classes.data
+﻿package com.attendance.app.classes.data
 
 import com.attendance.app.auth.data.TokenManager
 import com.attendance.shared.dto.ClassResponse
@@ -58,7 +58,7 @@ class ClassRepository(
     suspend fun fetchTeacherClasses(): Result<Unit> {
         return try {
             val response = httpClient.get("$baseUrl/teacher") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 val list: List<ClassResponse> = response.body()
@@ -75,7 +75,7 @@ class ClassRepository(
     suspend fun fetchStudentClasses(): Result<Unit> {
         return try {
             val response = httpClient.get("$baseUrl/student") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 val list: List<ClassResponse> = response.body()
@@ -110,7 +110,7 @@ class ClassRepository(
     suspend fun createClass(request: CreateClassRequest): Result<ClassResponse> {
         return try {
             val response = httpClient.post(baseUrl) {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -127,7 +127,7 @@ class ClassRepository(
     suspend fun joinClass(classCode: String): Result<JoinRequestResponse> {
         return try {
             val response = httpClient.post("$baseUrl/join") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
                 contentType(ContentType.Application.Json)
                 setBody(JoinClassRequest(classCode))
             }
@@ -144,7 +144,7 @@ class ClassRepository(
     suspend fun getPendingRequests(classId: String): Result<List<JoinRequestResponse>> {
         return try {
             val response = httpClient.get("$baseUrl/$classId/pending") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body())
@@ -159,7 +159,7 @@ class ClassRepository(
     suspend fun approveRequest(classId: String, requestId: String): Result<Unit> {
         return try {
             val response = httpClient.post("$baseUrl/approve/$requestId") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -174,7 +174,7 @@ class ClassRepository(
     suspend fun getRoster(classId: String): Result<List<JoinRequestResponse>> {
         return try {
             val response = httpClient.get("$baseUrl/$classId/roster") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body())
@@ -189,7 +189,7 @@ class ClassRepository(
     suspend fun rejectRequest(classId: String, requestId: String): Result<Unit> {
         return try {
             val response = httpClient.post("$baseUrl/reject/$requestId") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -204,7 +204,7 @@ class ClassRepository(
     suspend fun deleteClass(classId: String): Result<Unit> {
         return try {
             val response = httpClient.delete("$baseUrl/$classId") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -219,7 +219,7 @@ class ClassRepository(
     suspend fun removeStudent(classId: String, studentId: String): Result<Unit> {
         return try {
             val response = httpClient.post("$baseUrl/$classId/students/$studentId/remove") {
-                header(HttpHeaders.Authorization, getAuthHeader())
+
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -231,3 +231,4 @@ class ClassRepository(
         }
     }
 }
+

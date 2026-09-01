@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.presentation
+﻿package com.attendance.app.teacher.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -36,7 +36,7 @@ class TeacherReviewsViewModel(
                 val token = tokenManager.getToken()
                 if (token != null) {
                     val response = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/reviews/$classId") {
-                        header(HttpHeaders.Authorization, "Bearer $token")
+
                     }
                     if (response.status.isSuccess()) {
                         val items: List<ReviewItem> = response.body()
@@ -61,7 +61,7 @@ class TeacherReviewsViewModel(
                     data class OverrideRequest(val classId: String, val studentId: String, val status: String, val reason: String)
                     
                     val response = httpClient.post("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/override") {
-                        header(HttpHeaders.Authorization, "Bearer $token")
+
                         contentType(ContentType.Application.Json)
                         setBody(OverrideRequest(cid, studentId, newStatus, reason))
                     }
@@ -94,3 +94,4 @@ data class ReviewItem(
     val studentName: String,
     val issueType: String
 )
+

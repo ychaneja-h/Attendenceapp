@@ -1,4 +1,4 @@
-package com.attendance.app.student.presentation
+﻿package com.attendance.app.student.presentation
 
 import android.content.Context
 import android.util.Log
@@ -121,7 +121,7 @@ class StudentAttendanceViewModel(
                     val token = tokenManager.getToken()
                     if (token != null) {
                         val response = httpClient.get("${Constants.BASE_URL}/attendance/class/$classId/student/today") {
-                            header(HttpHeaders.Authorization, "Bearer $token")
+
                         }
                         if (response.status.isSuccess()) {
                             val body: Map<String, String?> = response.body()
@@ -150,7 +150,7 @@ class StudentAttendanceViewModel(
             try {
                 val token = tokenManager.getToken() ?: return@launch
                 val response = httpClient.get("${Constants.BASE_URL}/attendance/class/$classId/student/today") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+
                 }
                 if (response.status.isSuccess()) {
                     val body: Map<String, String?> = response.body()
@@ -171,3 +171,4 @@ sealed class AttendanceAction {
     data class RequireFaceVerification(val classId: String, val isCheckOut: Boolean = false) : AttendanceAction()
     object Completed : AttendanceAction()
 }
+

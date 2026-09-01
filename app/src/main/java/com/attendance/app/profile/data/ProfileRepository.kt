@@ -33,7 +33,7 @@ class ProfileRepository(
                 ?: return Result.failure(Exception("Not authenticated"))
 
             val response = httpClient.get(baseUrl) {
-                header(HttpHeaders.Authorization, "Bearer $token")
+
             }
 
             if (response.status.isSuccess()) {
@@ -67,7 +67,7 @@ class ProfileRepository(
             val request = UpdateProfileRequest(name = name, email = email, department = department, section = section, batch = batch, year = year, photoUrl = photoUrl)
 
             val response = httpClient.put(baseUrl) {
-                header(HttpHeaders.Authorization, "Bearer $token")
+
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -94,7 +94,7 @@ class ProfileRepository(
                     })
                 }
             ) {
-                header(HttpHeaders.Authorization, "Bearer $token")
+
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body())
@@ -110,7 +110,7 @@ class ProfileRepository(
         return try {
             val token = tokenManager.getToken() ?: return Result.failure(Exception("Not authenticated"))
             val response = httpClient.get("${Constants.BASE_URL}/reports/student/summary") {
-                header(HttpHeaders.Authorization, "Bearer $token")
+
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body())
@@ -128,5 +128,6 @@ data class StudentSummaryResponse(
     val totalPresent: Int,
     val totalAbsent: Int
 )
+
 
 

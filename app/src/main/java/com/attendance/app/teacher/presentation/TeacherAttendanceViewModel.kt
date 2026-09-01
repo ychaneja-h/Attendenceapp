@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.presentation
+﻿package com.attendance.app.teacher.presentation
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -126,7 +126,7 @@ class TeacherAttendanceViewModel(
                     val token = tokenManager.getToken()
                     if (token != null) {
                         httpClient.post("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/stop") {
-                            header(HttpHeaders.Authorization, "Bearer $token")
+
                             contentType(ContentType.Application.Json)
                             setBody(mapOf("classId" to classIdToStop))
                         }
@@ -141,3 +141,4 @@ class TeacherAttendanceViewModel(
         _activeClassId.value = null
     }
 }
+
