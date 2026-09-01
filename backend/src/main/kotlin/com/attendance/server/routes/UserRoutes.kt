@@ -11,6 +11,7 @@ import io.ktor.http.content.*
 import com.attendance.server.services.UserService
 import com.attendance.shared.dto.UpdateProfileRequest
 import java.util.UUID
+import org.jetbrains.exposed.sql.*
 
 fun Route.userRoutes() {
     val userService = UserService()
@@ -115,5 +116,6 @@ fun Route.userRoutes() {
         }
     }
 }
+
 
 
