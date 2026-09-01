@@ -13,7 +13,7 @@ import com.attendance.app.teacher.presentation.*
 import com.attendance.app.profile.data.ProfileRepository
 import com.attendance.app.profile.presentation.ProfileViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -78,7 +78,7 @@ val dataModule = module {
 
 val networkModule = module {
     single {
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(Json {
                     prettyPrint = true
@@ -89,5 +89,6 @@ val networkModule = module {
         }
     }
 }
+
 
 
