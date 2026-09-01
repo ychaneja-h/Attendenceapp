@@ -25,3 +25,5 @@
 -dontwarn org.slf4j.**
 -dontwarn io.ktor.**
 -dontwarn kotlinx.serialization.**
+-keep class com.attendance.shared.dto.** { *; }
+-keep class com.attendance.shared.models.** { *; }

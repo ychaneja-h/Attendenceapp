@@ -99,7 +99,7 @@ object SecurityUtils {
             var matched = false
             for (signature in signatures) {
                 val hashBytes = digest.digest(signature.toByteArray())
-                val hashString = hashBytes.joinToString("") { "%02X".format(it) }
+                val hashString = hashBytes.joinToString("") { "%02X".format(it.toInt() and 0xFF) }
                 if (hashString == expectedHash) {
                     matched = true
                     break
@@ -122,4 +122,5 @@ object SecurityUtils {
         exitProcess(1)
     }
 }
+
 
