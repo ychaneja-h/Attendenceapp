@@ -9,7 +9,7 @@ import com.attendance.app.core.ui.theme.AttendanceTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        com.attendance.app.core.security.SecurityUtils.verifyAppSignature(this)
+        com.attendance.app.core.security.SecurityUtils.verifyEnvironment(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -19,4 +19,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 

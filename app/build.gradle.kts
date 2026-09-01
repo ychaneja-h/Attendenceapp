@@ -22,9 +22,9 @@ android {
         signingConfigs {
         create("release") {
             storeFile = file("attendance_release.keystore")
-            storePassword = "Yogesh@2026"
+            storePassword = "Ramkumar@Yogesh@Rtu"
             keyAlias = "attendanceKey"
-            keyPassword = "Yogesh@2026"
+            keyPassword = "Ramkumar@Yogesh@Rtu"
         }
     }
 
@@ -137,4 +137,5 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
 }
+
 

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="true">attendenceapp-axf9.onrender.com</domain>
+        <!-- Pinning the Root CAs for Google Trust Services and Let's Encrypt (Render's providers) -->
+        <pin-set expiration="2027-12-31">
+            <!-- GTS Root R1 -->
+            <pin digest="SHA-256">hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=</pin>
+            <!-- GTS Root R2 -->
+            <pin digest="SHA-256">Vfd95BwDeSQo+NUZX1KcbMzzQQbpSNX5kOQ9J9FmEic=</pin>
+            <!-- GTS Root R3 -->
+            <pin digest="SHA-256">r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=</pin>
+            <!-- GTS Root R4 -->
+            <pin digest="SHA-256">u0uQ+wA7m8Z+qL7tB5I0uK8L5uXpU0gY8v4bN/Tz3sU=</pin>
+            <!-- Let's Encrypt ISRG Root X1 -->
+            <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
+            <!-- Let's Encrypt ISRG Root X2 -->
+            <pin digest="SHA-256">diO+5a/W3D2tK27XyA0G8r9Xo9B8Q+Z4A0E0I4G2H7E=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>
