@@ -52,7 +52,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
+                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -72,7 +72,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
+                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -92,7 +92,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                Result.failure(Exception("Registration failed: ${response.status}"))
+                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -112,8 +112,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText()
-                Result.failure(Exception(errorBody.takeIf { it.isNotBlank() } ?: "Login failed: ${response.status}"))
+                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Login failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -140,5 +139,9 @@ class AuthRepository(
         }
     }
 }
+
+
+
+
 
 
