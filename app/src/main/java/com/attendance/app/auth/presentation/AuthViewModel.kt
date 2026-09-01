@@ -40,6 +40,17 @@ class AuthViewModel(
         }
     }
 
+    fun verifyStaffCode(passcode: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+            val result = repository.verifyStaffCode(passcode)
+            isLoading = false
+            result.onSuccess { onSuccess() }
+                .onFailure { onError(it.message ?: "Invalid passcode") }
+        }
+    }
+
     fun requestDeviceTransfer(newDeviceId: String, onComplete: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
@@ -129,6 +140,7 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
 
 
 
