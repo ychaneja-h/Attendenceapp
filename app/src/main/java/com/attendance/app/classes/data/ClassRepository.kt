@@ -25,7 +25,8 @@ import kotlinx.coroutines.flow.map
 class ClassRepository(
     private val httpClient: HttpClient,
     private val tokenManager: TokenManager,
-    private val classDao: ClassDao
+    private val classDao: ClassDao,
+    private val studentDao: com.attendance.app.core.data.local.room.StudentDao
 ) {
     private val baseUrl = "${com.attendance.app.core.network.Constants.BASE_URL}/classes"
 
@@ -55,7 +56,7 @@ class ClassRepository(
     }
 
     // Network Sync functions
-    suspend fun fetchTeacherClasses(): Result<Unit> {
+        suspend fun fetchTeacherClasses(): Result<Unit> {
         return try {
             val response = httpClient.get("$baseUrl/teacher") {
 
@@ -63,6 +64,26 @@ class ClassRepository(
             if (response.status.isSuccess()) {
                 val list: List<ClassResponse> = response.body()
                 syncToLocalDb(list)
+                
+                // Sync roster for offline use
+                list.forEach { cls ->
+                    val rosterResp = httpClient.get("$baseUrl/${cls.id}/roster")
+                    if (rosterResp.status.isSuccess()) {
+                        val roster: List<com.attendance.shared.dto.JoinRequestResponse> = rosterResp.body()
+                        val studentEntities = roster.map {
+                            com.attendance.app.core.data.local.room.StudentEntity(
+                                id = it.studentId,
+                                classId = cls.id,
+                                studentName = it.studentName,
+                                collegeId = it.collegeId,
+                                status = it.status,
+                                joinedAt = it.requestedAt
+                            )
+                        }
+                        studentDao.insertStudents(studentEntities)
+                    }
+                }
+                
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Failed to load classes: ${response.status}"))
@@ -231,4 +252,6 @@ class ClassRepository(
         }
     }
 }
+
+
 

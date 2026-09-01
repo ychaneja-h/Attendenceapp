@@ -22,9 +22,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
+import kotlinx.coroutines.flow.combine
+import com.attendance.app.core.data.local.room.AttendanceDao
+import com.attendance.app.core.data.local.room.StudentDao
+
 class LiveSessionViewModel(
     private val httpClient: HttpClient,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val attendanceDao: AttendanceDao,
+    private val studentDao: StudentDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LiveSessionUiState>(LiveSessionUiState.Loading)
@@ -72,50 +78,62 @@ class LiveSessionViewModel(
         }
     }
 
-    fun loadSession(classId: String) {
+        fun loadSession(classId: String) {
         activeClassId = classId
         viewModelScope.launch {
             _uiState.value = LiveSessionUiState.Active(
                 classId = classId,
-                totalEnrolled = 0 // Will update on poll
+                totalEnrolled = 0 // Will update from local roster
             )
-            pollLiveSession(classId)
+            observeOfflineSession(classId)
         }
     }
     
-    private suspend fun pollLiveSession(classId: String) {
-        while (viewModelScope.isActive && activeClassId == classId) {
-            try {
-                val token = tokenManager.getToken()
-                val response = httpClient.get("${Constants.BASE_URL}/attendance/live/$classId") {
-                    if (token != null) {
-
+    private suspend fun observeOfflineSession(classId: String) {
+        combine(
+            attendanceDao.getRecordsForClass(classId),
+            studentDao.getStudentsForClass(classId)
+        ) { records, students ->
+            val totalEnrolled = students.size
+            if (_uiState.value is LiveSessionUiState.Active) {
+                _uiState.value = LiveSessionUiState.Active(
+                    classId = classId,
+                    totalEnrolled = totalEnrolled
+                )
+            }
+            
+            val studentMap = students.associateBy { it.id }
+            val groupedRecords = records.groupBy { it.studentId }
+            
+            groupedRecords.map { (studentId, studentRecords) ->
+                val sortedRecords = studentRecords.sortedBy { it.timestamp }
+                var currentChecks = 1
+                var lastCountedTime = sortedRecords.first().timestamp
+                val intervalMs = Math.max(0, (_recheckIntervalMinutes.value - 1) * 60 * 1000L)
+                
+                for (i in 1 until sortedRecords.size) {
+                    val recordTime = sortedRecords[i].timestamp
+                    if (recordTime - lastCountedTime >= intervalMs) {
+                        currentChecks++
+                        lastCountedTime = recordTime
                     }
                 }
                 
-                if (response.status.isSuccess()) {
-                    val data = response.body<LiveSessionResponse>()
-                    _presentStudents.value = data.presentStudents.map {
-                        StudentPresentInfo(
-                            studentId = it.studentId,
-                            name = it.name,
-                            timeVerified = it.timeVerified,
-                            isFaceVerified = it.isFaceVerified,
-                            successfulChecks = it.successfulChecks
-                        )
-                    }
-                    if (_uiState.value is LiveSessionUiState.Active) {
-                        _uiState.value = LiveSessionUiState.Active(
-                            classId = classId,
-                            totalEnrolled = data.totalEnrolled
-                        )
-                    }
-                    _lastSyncTime.value = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
-                }
-            } catch (e: Exception) {
-                // Ignore poll errors, retry next loop
+                val studentName = studentMap[studentId]?.studentName ?: "Unknown Student"
+                
+                StudentPresentInfo(
+                    studentId = studentId,
+                    name = studentName,
+                    timeVerified = sortedRecords.first().timestamp,
+                    isFaceVerified = true,
+                    successfulChecks = currentChecks
+                )
+            }.sortedByDescending { it.timeVerified }
+        }.collect { mappedList ->
+            if (activeClassId == classId) {
+                _presentStudents.value = mappedList
+                _lastSyncTime.value = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
             }
-            delay(3000) // Poll every 3 seconds for demo purposes
         }
     }
 
@@ -170,4 +188,6 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
+
+
 

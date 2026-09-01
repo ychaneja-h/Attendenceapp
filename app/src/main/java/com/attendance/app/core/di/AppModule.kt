@@ -41,7 +41,7 @@ val appModule = module {
     // Repositories
     single { TokenManager(androidContext()) }
     single { AuthRepository(get(), get()) }
-    single { ClassRepository(get(), get(), get()) }
+    single { ClassRepository(get(), get(), get(), get()) }
     single { ProfileRepository(get(), get(), androidContext()) }
 
     // ViewModels
@@ -50,7 +50,7 @@ val appModule = module {
     viewModel { StudentAttendanceViewModel(get(), get(), get()) }
 
     viewModel { TeacherAttendanceViewModel(get(), get(), get()) }
-    viewModel { LiveSessionViewModel(get(), get()) }
+    viewModel { LiveSessionViewModel(get(), get(), get(), get()) }
     viewModel { TeacherReviewsViewModel(get(), get()) }
     viewModel { ProfileViewModel(get()) }
     viewModel { com.attendance.app.face.presentation.FaceRegistrationViewModel(get()) }
@@ -76,7 +76,7 @@ val dataModule = module {
     // Repositories
     single { TokenManager(androidContext()) }
     single { AuthRepository(get(), get()) }
-    single { ClassRepository(get(), get(), get()) }
+    single { ClassRepository(get(), get(), get(), get()) }
 }
 
 val networkModule = module {
@@ -100,6 +100,8 @@ val networkModule = module {
     }
  
 }
+
+
 
 
 
