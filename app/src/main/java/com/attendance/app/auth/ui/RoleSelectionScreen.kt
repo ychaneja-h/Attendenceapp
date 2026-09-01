@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,6 +19,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.attendance.app.core.ui.components.PasswordTextField
+import com.attendance.app.auth.presentation.AuthViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun RoleSelectionScreen(
@@ -28,7 +30,8 @@ fun RoleSelectionScreen(
     onTeacherRegister: () -> Unit,
     onHodLogin: () -> Unit,
     onHodRegister: () -> Unit,
-    onAdminLogin: () -> Unit
+    onAdminLogin: () -> Unit,
+    viewModel: AuthViewModel = koinViewModel()
 ) {
     var showGatewayDialog by remember { mutableStateOf(false) }
     var gatewayTarget by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -60,13 +63,13 @@ fun RoleSelectionScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (gatewayPasscode == "Yogesh@Rtu@admin") {
+                    viewModel.verifyStaffCode(gatewayPasscode, onSuccess = {
                         showGatewayDialog = false
                         gatewayPasscode = ""
                         gatewayTarget?.invoke()
-                    } else {
+                    }, onError = {
                         gatewayError = true
-                    }
+                    })
                 }) {
                     Text("Submit")
                 }
@@ -189,3 +192,4 @@ private fun RoleCard(
         }
     }
 }
+

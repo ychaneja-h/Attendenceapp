@@ -1,4 +1,4 @@
-package com.attendance.app.auth.data
+﻿package com.attendance.app.auth.data
 
 import com.attendance.shared.dto.AuthTokenResponse
 import com.attendance.shared.dto.LoginRequest
@@ -22,6 +22,22 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
     private val baseUrl = "${Constants.BASE_URL}/auth"
+
+    suspend fun verifyStaffCode(passcode: String): Result<Unit> {
+        return try {
+            val response = httpClient.post("$baseUrl/verify-staff-code") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("passcode" to passcode))
+            }
+            if (response.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Invalid passcode"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun registerStudent(request: StudentRegisterRequest): Result<AuthTokenResponse> {
         return try {
@@ -124,3 +140,4 @@ class AuthRepository(
         }
     }
 }
+

@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
@@ -19,9 +19,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+        signingConfigs {
+        create("release") {
+            storeFile = file("attendance_release.keystore")
+            storePassword = "Yogesh@2026"
+            keyAlias = "attendanceKey"
+            keyPassword = "Yogesh@2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -127,3 +137,4 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
 }
+

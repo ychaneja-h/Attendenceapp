@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.AuthService
 import com.attendance.shared.dto.*
@@ -40,6 +40,22 @@ fun Route.authRoutes() {
             }
         }
 
+        post("/verify-staff-code") {
+            try {
+                val request = call.receive<Map<String, String>>()
+                val passcode = request["passcode"] ?: ""
+                val officialCode = System.getenv("STAFF_MASTER_CODE") ?: "Yogesh@Rtu@admin"
+                
+                if (passcode == officialCode) {
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                } else {
+                    call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid passcode"))
+                }
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid request"))
+            }
+        }
+
         post("/login") {
             handleLogin(call)
         }
@@ -73,3 +89,4 @@ private suspend fun handleLogin(call: ApplicationCall) {
         }
     }
 }
+
