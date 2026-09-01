@@ -1,4 +1,4 @@
-package com.attendance.app.core.data.sync
+﻿package com.attendance.app.core.data.sync
 
 import android.content.Context
 import android.util.Log
@@ -48,10 +48,7 @@ class AttendanceSyncWorker(
 
             val response = httpClient.post("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/sync") {
                 contentType(ContentType.Application.Json)
-                if (token != null) {
-                    header(io.ktor.http.HttpHeaders.Authorization, "Bearer $token")
-                }
-                setBody(syncRequests)
+setBody(syncRequests)
             }
 
             if (response.status.isSuccess()) {
@@ -88,3 +85,4 @@ data class SyncRecordResponse(
     val requiredChecks: Int,
     val nextCheckIntervalMinutes: Int
 )
+

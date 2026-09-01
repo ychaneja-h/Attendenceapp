@@ -1,4 +1,4 @@
-package com.attendance.app.student.ui
+﻿package com.attendance.app.student.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -128,7 +128,7 @@ fun StudentClassDetailScreen(
                     CircularProgressIndicator(modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(scanStatus, style = MaterialTheme.typography.bodyLarge)
-                } else if (todayStatus != null && todayStatus != "Error" && scanStatus.contains("checked in")) {
+                } else if (scanStatus.contains("checked in") || scanStatus.contains("Active")) {
                     Text(scanStatus, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
@@ -161,5 +161,6 @@ fun StudentClassDetailScreen(
         }
     }
 }
+
 
 

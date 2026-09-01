@@ -1,4 +1,4 @@
-package com.attendance.app.face.ui
+﻿package com.attendance.app.face.ui
 
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-enum class Challenge { BLINK, SMILE }
+enum class Challenge { BLINK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +79,7 @@ fun FaceVerificationScreen(
                                     }
                                 } else {
                                     verificationStatus = "Please SMILE..."
-                                    if (smiling != null && smiling > 0.7f) {
+                                    if (smiling != null && smiling > 0.8f) {
                                         challengePassed = true
                                     }
                                 }
@@ -103,7 +103,7 @@ fun FaceVerificationScreen(
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        if (similarity > 0.7f) {
+                                        if (similarity > 0.85f) {
                                             isVerified = true
                                         } else {
                                             verificationStatus = "Face does not match registered profile"
@@ -147,7 +147,7 @@ fun FaceVerificationScreen(
                     ) {
                         Card(modifier = Modifier.padding(bottom = 16.dp)) {
                             Text(
-                                text = if (isVerified) "✅ Face Verified!" else verificationStatus, 
+                                text = if (isVerified) "âœ… Face Verified!" else verificationStatus, 
                                 modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = if (isFaceDetected || isVerified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -175,5 +175,6 @@ fun FaceVerificationScreen(
         }
     }
 }
+
 
 
