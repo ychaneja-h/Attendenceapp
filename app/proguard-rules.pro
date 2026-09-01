@@ -21,3 +21,7 @@
 
 # Ktor
 -keep class io.ktor.** { *; }
+-dontwarn java.lang.management.**
+-dontwarn org.slf4j.**
+-dontwarn io.ktor.**
+-dontwarn kotlinx.serialization.**
