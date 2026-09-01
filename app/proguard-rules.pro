@@ -27,3 +27,18 @@
 -dontwarn kotlinx.serialization.**
 -keep class com.attendance.shared.dto.** { *; }
 -keep class com.attendance.shared.models.** { *; }
+# Koin
+-keep class org.koin.** { *; }
+
+# Serialization
+-keepattributes *Annotation*, InnerClasses
+-keep class kotlinx.serialization.** { *; }
+
+# Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# Compose / Navigation
+-keep class androidx.compose.** { *; }
+-keep class androidx.navigation.** { *; }
+-keep class com.attendance.app.** { *; }

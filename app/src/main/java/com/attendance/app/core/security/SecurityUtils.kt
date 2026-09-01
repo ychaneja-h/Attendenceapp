@@ -5,14 +5,13 @@ import android.content.pm.PackageManager
 import android.content.pm.Signature
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import com.attendance.app.BuildConfig
 import java.security.MessageDigest
 import kotlin.system.exitProcess
 
 object SecurityUtils {
 
-    // Obfuscated Official Release Signature (SHA-256)
-    // Original: B5:37:D2:34:22:89:11:12:A0:E5:1F:EE:DA:5A:63:0E:1A:04:3E:BC:9D:E4:CA:1E:5B:D4:4E:74:7B:CA:9C:D9
     private val expectedSigParts = arrayOf(
         "B537", "D234", "2289", "1112", "A0E5", "1FEE", "DA5A", "630E",
         "1A04", "3EBC", "9DE4", "CA1E", "5BD4", "4E74", "7BCA", "9CD9"
@@ -21,28 +20,26 @@ object SecurityUtils {
     fun verifyEnvironment(context: Context) {
         if (BuildConfig.DEBUG) return
         verifyAppSignature(context)
-        if (isRooted() || isEmulator()) {
-            tamperDetected()
+        if (isRooted()) { 
+            tamperDetected("Root Detected", context)
+            return 
+        }
+        if (isEmulator()) { 
+            tamperDetected("Emulator Detected", context)
+            return
         }
     }
 
     private fun isEmulator(): Boolean {
-        return (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
-                || Build.FINGERPRINT.startsWith("generic")
+        // Reduced emulator checks to avoid false positives on real devices like Xiaomi/Realme
+        return Build.FINGERPRINT.startsWith("generic")
                 || Build.FINGERPRINT.startsWith("unknown")
-                || Build.HARDWARE.contains("goldfish")
-                || Build.HARDWARE.contains("ranchu")
                 || Build.MODEL.contains("google_sdk")
                 || Build.MODEL.contains("Emulator")
                 || Build.MODEL.contains("Android SDK built for x86")
                 || Build.MANUFACTURER.contains("Genymotion")
-                || Build.PRODUCT.contains("sdk_google")
-                || Build.PRODUCT.contains("google_sdk")
-                || Build.PRODUCT.contains("sdk")
-                || Build.PRODUCT.contains("sdk_x86")
-                || Build.PRODUCT.contains("vbox86p")
-                || Build.PRODUCT.contains("emulator")
-                || Build.PRODUCT.contains("simulator")
+                || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                || "google_sdk" == Build.PRODUCT
     }
 
     private fun isRooted(): Boolean {
@@ -69,7 +66,6 @@ object SecurityUtils {
     }
 
     private fun verifyAppSignature(context: Context) {
-        // Only enforce in release builds
         if (BuildConfig.DEBUG) return
 
         try {
@@ -90,7 +86,8 @@ object SecurityUtils {
             }
 
             if (signatures.isEmpty()) {
-                tamperDetected()
+                tamperDetected("No signatures found in APK", context)
+                return
             }
 
             val expectedHash = expectedSigParts.joinToString("")
@@ -107,20 +104,24 @@ object SecurityUtils {
             }
 
             if (!matched) {
-                tamperDetected()
+                tamperDetected("Signature Hash Mismatch", context)
+                return
             }
 
         } catch (e: Exception) {
-            tamperDetected()
+            tamperDetected("Exception during signature verification: $e", context)
+            return
         }
     }
 
-    private fun tamperDetected() {
-        Log.e("Security", "App Tampering Detected! Invalid Signature.")
-        // Hard crash to prevent bypass
-        android.os.Process.killProcess(android.os.Process.myPid())
-        exitProcess(1)
+    private fun tamperDetected(reason: String, context: Context) {
+        Log.e("Security", "App Tampering Detected! Reason: $reason")
+        Toast.makeText(context, "Security Alert: $reason", Toast.LENGTH_LONG).show()
+        
+        // Delay kill so user can read the toast message
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            android.os.Process.killProcess(android.os.Process.myPid())
+            exitProcess(1)
+        }, 3500)
     }
 }
-
-
