@@ -27,7 +27,7 @@ class AuthRepository(
         return try {
             val response = httpClient.post("$baseUrl/verify-staff-code") {
                 contentType(ContentType.Application.Json)
-                setBody(mapOf("passcode" to passcode))
+                setBody(com.attendance.shared.dto.VerifyStaffCodeRequest(passcode))
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -140,4 +140,5 @@ class AuthRepository(
         }
     }
 }
+
 

@@ -59,3 +59,8 @@ data class ErrorResponse(
     val message: String
 )
 
+
+@Serializable
+data class VerifyStaffCodeRequest(
+    val passcode: String
+)

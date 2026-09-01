@@ -42,8 +42,8 @@ fun Route.authRoutes() {
 
         post("/verify-staff-code") {
             try {
-                val request = call.receive<Map<String, String>>()
-                val passcode = request["passcode"] ?: ""
+                val request = call.receive<com.attendance.shared.dto.VerifyStaffCodeRequest>()
+                val passcode = request.passcode
                 val officialCode = System.getenv("STAFF_MASTER_CODE") ?: "Yogesh@Rtu@admin"
                 
                 if (passcode == officialCode) {
@@ -89,4 +89,5 @@ private suspend fun handleLogin(call: ApplicationCall) {
         }
     }
 }
+
 
