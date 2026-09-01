@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 data class ApprovalRequestDTO(
     val id: String,
     val studentId: String,
+    val studentName: String? = null,
     val requestType: String,
     val requestedData: String,
     val status: String,
@@ -54,11 +55,12 @@ class RequestService {
 
     fun getPendingRequests(): List<ApprovalRequestDTO> {
         return transaction {
-            ApprovalRequests.select { ApprovalRequests.status eq "PENDING" }
+            (ApprovalRequests innerJoin Users).select { ApprovalRequests.status eq "PENDING" }
                 .map {
                     ApprovalRequestDTO(
                         id = it[ApprovalRequests.id].toString(),
                         studentId = it[ApprovalRequests.studentId].toString(),
+                        studentName = it[Users.name],
                         requestType = it[ApprovalRequests.requestType],
                         requestedData = it[ApprovalRequests.requestedData],
                         status = it[ApprovalRequests.status],
@@ -70,12 +72,13 @@ class RequestService {
 
     fun getMyRequests(studentId: UUID): List<ApprovalRequestDTO> {
         return transaction {
-            ApprovalRequests.select { ApprovalRequests.studentId eq studentId }
+            (ApprovalRequests innerJoin Users).select { ApprovalRequests.studentId eq studentId }
                 .orderBy(ApprovalRequests.createdAt to SortOrder.DESC)
                 .map {
                     ApprovalRequestDTO(
                         id = it[ApprovalRequests.id].toString(),
                         studentId = it[ApprovalRequests.studentId].toString(),
+                        studentName = it[Users.name],
                         requestType = it[ApprovalRequests.requestType],
                         requestedData = it[ApprovalRequests.requestedData],
                         status = it[ApprovalRequests.status],
@@ -113,4 +116,6 @@ class RequestService {
         }
     }
 }
+
+
 

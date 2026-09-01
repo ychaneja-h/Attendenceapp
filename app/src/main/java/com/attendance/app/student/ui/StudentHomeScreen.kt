@@ -71,18 +71,25 @@ fun StudentHomeScreen(
                                     }
                                 }
                             }
-                            if (hasPending) {
+                                                        if (hasPending) {
                                 prefs.edit().putBoolean("face_approval_pending", true).apply()
                             } else if (latestApproved != null) {
                                 prefs.edit().putBoolean("face_approval_pending", false).apply()
                                 val pendingFace = prefs.getString("pending_face_embedding", null)
                                 if (pendingFace != null) {
-                                    prefs.edit()
-                                        .putString("registered_face_embedding", pendingFace)
-                                        .remove("pending_face_embedding")
-                                        .apply()
-                                } else if (!prefs.contains("registered_face_embedding")) {
-                                    prefs.edit().putString("registered_face_embedding", latestApproved.getString("requestedData")).apply()
+                                    prefs.edit().putString("registered_face_embedding", pendingFace).remove("pending_face_embedding").apply()
+                                }
+                            }
+                            
+                            // If we still don't have a registered face locally, try to fetch it from backend
+                            if (prefs.getString("registered_face_embedding", null) == null) {
+                                val faceRes = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/users/me/face")
+                                if (faceRes.status.value in 200..299) {
+                                    val obj = org.json.JSONObject(faceRes.bodyAsText())
+                                    val embed = obj.optString("faceEmbedding", "")
+                                    if (embed.isNotEmpty()) {
+                                        prefs.edit().putString("registered_face_embedding", embed).putBoolean("face_approval_pending", false).apply()
+                                    }
                                 }
                             } else {
                                 prefs.edit().putBoolean("face_approval_pending", false).apply()
@@ -262,6 +269,7 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
 
 
 

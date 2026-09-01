@@ -1,4 +1,4 @@
-package com.attendance.app.teacher.ui
+﻿package com.attendance.app.teacher.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +24,7 @@ import org.koin.compose.koinInject
 data class TeacherRequestDto(
     val id: String,
     val studentId: String,
+    val studentName: String? = null,
     val requestType: String,
     val requestedData: String
 )
@@ -74,18 +75,34 @@ fun TeacherRequestsScreen(
                 items(requests) { request ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            val titleText = if (request.requestType == "FACE_REGISTRATION") {
+                                                        val titleText = if (request.requestType == "FACE_REGISTRATION") {
                                 "Face Registration Request"
                             } else {
                                 "Device Change Request"
                             }
-                            Text("$titleText from ${request.studentId.substring(0, 8)}...", style = MaterialTheme.typography.titleMedium)
+                            val displayName = request.studentName ?: (request.studentId.substring(0, 8) + "...")
+                            Text("$titleText from $displayName", style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("Type: ${request.requestType}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Data: ${request.requestedData}", style = MaterialTheme.typography.bodySmall)
+                            if (request.requestType != "FACE_REGISTRATION") {
+                                Text("Data: ${request.requestedData}", style = MaterialTheme.typography.bodySmall)
+                            } else {
+                                Text("Student requested to update their biometric face profile.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                TextButton(onClick = { /* Reject */ }) {
+                                TextButton(onClick = { 
+                                    scope.launch {
+                                        try {
+                                            val res = httpClient.post("${Constants.BASE_URL}/requests/${request.id}/reject")
+                                            if (res.status.isSuccess()) {
+                                                requests = requests.filter { it.id != request.id }
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                }) {
                                     Text("Reject", color = MaterialTheme.colorScheme.error)
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -111,3 +128,4 @@ fun TeacherRequestsScreen(
         }
     }
 }
+

@@ -45,7 +45,26 @@ fun Route.userRoutes() {
                     call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
                 }
             }
+            get("/me/face") {
+                try {
+                    val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
+                    val userIdStr = principal?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(io.ktor.http.HttpStatusCode.Unauthorized, "Unauthorized")
+                    val userId = java.util.UUID.fromString(userIdStr)
 
+                    val user = org.jetbrains.exposed.sql.transactions.transaction {
+                        com.attendance.server.models.Users.select { com.attendance.server.models.Users.id eq userId }.singleOrNull()
+                    }
+                    if (user != null) {
+                        val embedding = user[com.attendance.server.models.Users.faceEmbedding]
+                        call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("faceEmbedding" to (embedding ?: "")))
+                    } else {
+                        call.respond(io.ktor.http.HttpStatusCode.NotFound, "User not found")
+                    }
+                } catch (e: Exception) {
+                    call.respond(io.ktor.http.HttpStatusCode.BadRequest, "Failed")
+                }
+            }
             post("/me/photo") {
                 try {
                     val principal = call.principal<JWTPrincipal>()
@@ -96,4 +115,5 @@ fun Route.userRoutes() {
         }
     }
 }
+
 
