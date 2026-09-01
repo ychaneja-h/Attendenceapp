@@ -61,8 +61,7 @@ fun HodProfileScreen(
                 is ProfileUiState.Loading -> CircularProgressIndicator()
                 is ProfileUiState.Error -> Text("Error loading profile")
                 is ProfileUiState.Success -> {
-                    OutlinedTextField(value = photoUrl, onValueChange = { photoUrl = it }, label = { Text("Photo URL") }, modifier = Modifier.fillMaxWidth())
-                    Spacer(modifier = Modifier.height(8.dp))
+                    
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
@@ -117,4 +116,5 @@ fun HodProfileScreen(
         }
     }
 }
+
 

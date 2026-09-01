@@ -1,4 +1,4 @@
-package com.attendance.app.face.presentation
+﻿package com.attendance.app.face.presentation
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -21,7 +21,7 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
     val registrationState: StateFlow<FaceRegState> = _registrationState.asStateFlow()
 
     fun onFaceDetected(embedding: FloatArray, context: Context) {
-        // Only allow capture when Idle — prevents looping
+        // Only allow capture when Idle â€” prevents looping
         if (_registrationState.value != FaceRegState.Idle) return
         
         _registrationState.value = FaceRegState.Processing
@@ -38,18 +38,26 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
                 
                 // Then try to send to server for teacher approval
                 val embeddingJsonString = org.json.JSONArray(embedding.toList()).toString()
-                val response = httpClient.post("${Constants.BASE_URL}/requests/face") {
+                                val response = httpClient.post("${Constants.BASE_URL}/requests/face") {
                     contentType(ContentType.Application.Json)
                     setBody(mapOf("faceEmbeddingJSON" to embeddingJsonString))
                 }
                 if (response.status.isSuccess()) {
+                    val respText = io.ktor.client.statement.bodyAsText(response)
+                    if (respText.contains("auto-approved")) {
+                        prefs.edit()
+                            .putString("registered_face_embedding", embeddingJson)
+                            .remove("pending_face_embedding")
+                            .putBoolean("face_approval_pending", false)
+                            .apply()
+                    }
                     _registrationState.value = FaceRegState.Success
                 } else {
-                    // Server rejected, but local save is done — still success for UX
+                    // Server rejected, but local save is done â€” still success for UX
                     _registrationState.value = FaceRegState.Success
                 }
             } catch (e: Exception) {
-                // Network error — face is saved locally, mark as success so student can proceed
+                // Network error â€” face is saved locally, mark as success so student can proceed
                 _registrationState.value = FaceRegState.Success
             }
         }
@@ -66,3 +74,5 @@ sealed class FaceRegState {
     object Success : FaceRegState()
     object Error : FaceRegState()
 }
+
+

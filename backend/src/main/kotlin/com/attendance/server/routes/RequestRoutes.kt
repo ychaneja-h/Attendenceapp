@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.RequestService
 import io.ktor.server.application.*
@@ -88,3 +88,4 @@ fun Route.requestRoutes() {
         }
     }
 }
+

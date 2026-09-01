@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
@@ -56,7 +56,7 @@ fun Route.userRoutes() {
                     val multipart = call.receiveMultipart()
                     var fileName: String? = null
                     
-                    val uploadDir = java.io.File("backend/uploads")
+                    val uploadDir = java.io.File("uploads")
                     if (!uploadDir.exists()) {
                         uploadDir.mkdirs()
                     }
@@ -96,3 +96,4 @@ fun Route.userRoutes() {
         }
     }
 }
+

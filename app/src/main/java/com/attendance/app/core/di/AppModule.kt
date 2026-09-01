@@ -78,17 +78,27 @@ val dataModule = module {
 
 val networkModule = module {
     single {
-        HttpClient(OkHttp) {
-            install(ContentNegotiation) {
-                json(Json {
+        val tokenManager = get<com.attendance.app.auth.data.TokenManager>()
+        io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) {
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+                kotlinx.serialization.json.Json {
                     prettyPrint = true
                     isLenient = true
                     ignoreUnknownKeys = true
-                })
+                }.let { io.ktor.serialization.kotlinx.json.json(it) }
+            }
+            io.ktor.client.plugins.defaultRequest {
+                val token = tokenManager.getToken()
+                if (token != null) {
+                    io.ktor.client.request.header(io.ktor.http.HttpHeaders.Authorization, "Bearer $token")
+                }
             }
         }
     }
+ 
 }
+
+
 
 
 

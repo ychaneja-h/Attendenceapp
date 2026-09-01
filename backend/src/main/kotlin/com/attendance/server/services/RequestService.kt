@@ -1,4 +1,4 @@
-package com.attendance.server.services
+﻿package com.attendance.server.services
 
 import com.attendance.server.models.ApprovalRequests
 import com.attendance.server.models.Users
@@ -19,6 +19,27 @@ data class ApprovalRequestDTO(
 )
 
 class RequestService {
+        fun createFaceRequest(studentId: UUID, requestedData: String): String {
+        return transaction {
+            val user = Users.select { Users.id eq studentId }.singleOrNull()
+            if (user != null && user[Users.faceEmbedding].isNullOrEmpty()) {
+                Users.update({ Users.id eq studentId }) {
+                    it[faceEmbedding] = requestedData
+                }
+                "auto-approved"
+            } else {
+                ApprovalRequests.insert {
+                    it[this.studentId] = studentId
+                    it[this.requestType] = "FACE_REGISTRATION"
+                    it[this.requestedData] = requestedData
+                    it[status] = "PENDING"
+                    it[createdAt] = Instant.now()
+                }
+                "pending"
+            }
+        }
+    }
+
     fun createRequest(studentId: UUID, requestType: String, requestedData: String) {
         transaction {
             ApprovalRequests.insert {
@@ -92,3 +113,4 @@ class RequestService {
         }
     }
 }
+
