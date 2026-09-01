@@ -11,10 +11,14 @@ object DatabaseConfig {
     fun init() {
         val dbUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/attendance"
         // Ensure SSL is enabled for Supabase
-        val finalUrl = if (dbUrl.contains("supabase") && !dbUrl.contains("sslmode")) {
+                var finalUrl = if (dbUrl.contains("supabase") && !dbUrl.contains("sslmode")) {
             if (dbUrl.contains("?")) "$dbUrl&sslmode=require" else "$dbUrl?sslmode=require"
         } else {
             dbUrl
+        }
+        
+        if (!finalUrl.contains("prepareThreshold=0")) {
+            finalUrl = if (finalUrl.contains("?")) "$finalUrl&prepareThreshold=0" else "$finalUrl?prepareThreshold=0"
         }
 
         val config = HikariConfig().apply {
@@ -58,4 +62,5 @@ object DatabaseConfig {
         }
     }
 }
+
 
