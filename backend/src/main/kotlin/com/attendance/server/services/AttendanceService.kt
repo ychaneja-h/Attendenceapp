@@ -1,4 +1,4 @@
-package com.attendance.server.services
+﻿package com.attendance.server.services
 
 import com.attendance.server.models.AttendanceRecords
 import com.attendance.server.models.AttendanceSessions
@@ -414,8 +414,8 @@ class AttendanceService {
         return transaction {
             val todayStart = java.time.LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
             val todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS)
-            val record = AttendanceRecords.innerJoin(AttendanceSessions)
-                .select(AttendanceRecords.finalStatus)
+                        val record = AttendanceRecords.innerJoin(AttendanceSessions)
+                .select(listOf(AttendanceRecords.finalStatus, AttendanceRecords.successfulChecks, AttendanceSessions.minSuccessfulChecks))
                 .where {
                     (AttendanceRecords.studentId eq studentId) and
                     (AttendanceSessions.classId eq classId) and
@@ -424,7 +424,15 @@ class AttendanceService {
                 }
                 .orderBy(AttendanceSessions.startedAt, org.jetbrains.exposed.sql.SortOrder.DESC)
                 .firstOrNull()
-            record?.get(AttendanceRecords.finalStatus)
+            
+            if (record != null) {
+                val status = record[AttendanceRecords.finalStatus]
+                val checks = record[AttendanceRecords.successfulChecks]
+                val minChecks = record[AttendanceSessions.minSuccessfulChecks]
+                "$status (Checks: $checks/$minChecks)"
+            } else {
+                null
+            }
         }
     }
 
@@ -506,6 +514,7 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
+
 
 
 
