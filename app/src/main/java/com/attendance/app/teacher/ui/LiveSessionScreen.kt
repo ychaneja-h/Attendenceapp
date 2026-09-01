@@ -25,6 +25,7 @@ import java.util.*
 fun LiveSessionScreen(
     classId: String,
     navController: NavController,
+    historyStartTime: Long? = null,
     liveSessionViewModel: LiveSessionViewModel = koinViewModel(),
     attendanceViewModel: TeacherAttendanceViewModel = koinViewModel()
 ) {
@@ -34,20 +35,22 @@ fun LiveSessionScreen(
     val recheckInterval by liveSessionViewModel.recheckIntervalMinutes.collectAsState()
 
     LaunchedEffect(classId) {
-        liveSessionViewModel.loadSession(classId, attendanceViewModel.activeSessionStartTime.value)
+        liveSessionViewModel.loadSession(classId, historyStartTime ?: attendanceViewModel.activeSessionStartTime.value)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Live Session") },
+                title = { Text(if (historyStartTime != null) "Session Details" else "Live Session") },
                 actions = {
-                    IconButton(onClick = { 
-                        liveSessionViewModel.endSession(context, "Recent Class") // Hardcoded name for demo
-                        attendanceViewModel.stopAttendanceSession(context)
-                        navController.popBackStack() 
-                    }) {
-                        Icon(Icons.Default.Stop, contentDescription = "End Session", tint = MaterialTheme.colorScheme.error)
+                    if (historyStartTime == null) {
+                        IconButton(onClick = { 
+                            liveSessionViewModel.endSession(context, "Recent Class") // Hardcoded name for demo
+                            attendanceViewModel.stopAttendanceSession(context)
+                            navController.popBackStack() 
+                        }) {
+                            Icon(Icons.Default.Stop, contentDescription = "End Session", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             )
@@ -76,13 +79,14 @@ fun LiveSessionScreen(
                             Text("Attendance Progress", style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             
+                            val presentCount = presentStudents.count { it.successfulChecks > 0 || it.manualStatus == "PRESENT" }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "${presentStudents.size} / ${state.totalEnrolled}",
+                                    "$presentCount / ${state.totalEnrolled}",
                                     style = MaterialTheme.typography.headlineMedium
                                 )
                                 Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(32.dp))
@@ -90,7 +94,7 @@ fun LiveSessionScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             LinearProgressIndicator(
-                                progress = { presentStudents.size.toFloat() / state.totalEnrolled.toFloat().coerceAtLeast(1f) },
+                                progress = { presentCount.toFloat() / state.totalEnrolled.toFloat().coerceAtLeast(1f) },
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -108,7 +112,7 @@ fun LiveSessionScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Verified Students (${presentStudents.size})", style = MaterialTheme.typography.titleMedium)
+                    Text("Class Roster ()", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Live Student List
@@ -128,34 +132,51 @@ fun LiveSessionScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(student.name, style = MaterialTheme.typography.bodyLarge)
-                                        val timeString = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(student.timeVerified))
-                                        Text("Synced at $timeString (Checks: ${student.successfulChecks})", style = MaterialTheme.typography.bodySmall)
+                                        if (student.manualStatus != null) {
+                                            Text(
+                                                "Manually Marked: ${student.manualStatus}", 
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        } else if (student.successfulChecks > 0) {
+                                            val timeString = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(student.timeVerified))
+                                            Text("Synced at $timeString (Checks: ${student.successfulChecks})", style = MaterialTheme.typography.bodySmall)
+                                        } else {
+                                            Text("No checks yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                                        }
                                     }
                                     
-                                    Box {
-                                        IconButton(onClick = { menuExpanded = true }) {
-                                            Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                                    if (student.manualStatus == null) {
+                                        Box {
+                                            IconButton(onClick = { menuExpanded = true }) {
+                                                Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                                            }
+                                            DropdownMenu(
+                                                expanded = menuExpanded,
+                                                onDismissRequest = { menuExpanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Mark Absent") },
+                                                    onClick = { 
+                                                        menuExpanded = false
+                                                        reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "ABSENT", "Teacher manual")
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Mark Present") },
+                                                    onClick = { 
+                                                        menuExpanded = false
+                                                        reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "PRESENT", "Teacher manual")
+                                                    }
+                                                )
+                                            }
                                         }
-                                        DropdownMenu(
-                                            expanded = menuExpanded,
-                                            onDismissRequest = { menuExpanded = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text("Mark Absent") },
-                                                onClick = { 
-                                                    menuExpanded = false
-                                                    reviewsViewModel.overrideAttendance("", student.studentId, "ABSENT", "Teacher marked absent from Live Session")
-                                                    // In a real app we'd refresh the list, but it polls anyway
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("Mark Present") },
-                                                onClick = { 
-                                                    menuExpanded = false
-                                                    reviewsViewModel.overrideAttendance("", student.studentId, "PRESENT", "Teacher marked present from Live Session")
-                                                }
-                                            )
-                                        }
+                                    } else {
+                                        Icon(
+                                            if (student.manualStatus == "PRESENT") Icons.Default.CheckCircle else Icons.Default.Cancel, 
+                                            contentDescription = null, 
+                                            tint = if (student.manualStatus == "PRESENT") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        )
                                     }
                                 }
                             }
@@ -166,5 +187,3 @@ fun LiveSessionScreen(
         }
     }
 }
-
-

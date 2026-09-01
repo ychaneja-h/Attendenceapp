@@ -34,8 +34,13 @@ fun TeacherHistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(sessions) { session ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                                items(sessions) { session ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            navController.navigate(com.attendance.app.core.ui.navigation.Screen.LiveSession(classId = session.classId, startTime = session.timestamp))
+                        }
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(session.className, style = MaterialTheme.typography.titleMedium)
                             Text(session.dateString, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -48,3 +53,4 @@ fun TeacherHistoryScreen(
         }
     }
 }
+

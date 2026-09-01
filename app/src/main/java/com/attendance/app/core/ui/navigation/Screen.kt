@@ -1,4 +1,4 @@
-package com.attendance.app.core.ui.navigation
+﻿package com.attendance.app.core.ui.navigation
 
 import kotlinx.serialization.Serializable
 
@@ -33,7 +33,7 @@ sealed interface Screen {
     @Serializable data class ClassMembers(val classId: String) : Screen
     @Serializable data class PendingRequests(val classId: String) : Screen
     @Serializable data class StartSession(val classId: String) : Screen
-    @Serializable data class LiveSession(val classId: String, val interval: Int = 1, val minChecks: Int = 3) : Screen
+    @Serializable data class LiveSession(val classId: String, val interval: Int = 1, val minChecks: Int = 3, val startTime: Long = 0L) : Screen
     @Serializable data object TeacherRequests : Screen
 
     // HOD
@@ -54,3 +54,4 @@ sealed interface Screen {
     @Serializable data object FaceEnrollment : Screen
     @Serializable data class FaceVerification(val classId: String) : Screen
 }
+

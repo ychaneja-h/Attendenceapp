@@ -102,38 +102,42 @@ class LiveSessionViewModel(
                 )
             }
             
-            val studentMap = students.associateBy { it.id }
+                        val studentMap = students.associateBy { it.id }
             val groupedRecords = records.groupBy { it.studentId }
             
-            groupedRecords.map { entry ->
-                val studentId = entry.key
-                val studentRecords = entry.value
+            students.map { student ->
+                val studentId = student.id
+                val studentRecords = groupedRecords[studentId] ?: emptyList()
                 val sortedRecords = studentRecords.sortedBy { it.timestamp }
-                var currentChecks = 1
-                var lastCountedTime = sortedRecords.first().timestamp
-                val intervalMs = Math.max(0, (_recheckIntervalMinutes.value - 1) * 60 * 1000L)
                 
-                for (i in 1 until sortedRecords.size) {
-                    val recordTime = sortedRecords[i].timestamp
-                    if (recordTime - lastCountedTime >= intervalMs) {
-                        currentChecks++
-                        lastCountedTime = recordTime
+                var currentChecks = 0
+                var lastCountedTime = 0L
+                if (sortedRecords.isNotEmpty()) {
+                    currentChecks = 1
+                    lastCountedTime = sortedRecords.first().timestamp
+                    val intervalMs = Math.max(0, (_recheckIntervalMinutes.value - 1) * 60 * 1000L)
+                    
+                    for (i in 1 until sortedRecords.size) {
+                        val recordTime = sortedRecords[i].timestamp
+                        if (recordTime - lastCountedTime >= intervalMs) {
+                            currentChecks++
+                            lastCountedTime = recordTime
+                        }
                     }
                 }
                 
-                                val studentName = studentMap[studentId]?.studentName ?: "Unknown Student"
                 val manualRecord = studentRecords.find { it.method.startsWith("MANUAL_") }
                 val manualStatus = manualRecord?.method?.removePrefix("MANUAL_")
                 
                 StudentPresentInfo(
                     studentId = studentId,
-                    name = studentName,
-                    timeVerified = sortedRecords.first().timestamp,
-                    isFaceVerified = true,
+                    name = student.studentName,
+                    timeVerified = if (sortedRecords.isNotEmpty()) sortedRecords.first().timestamp else 0L,
+                    isFaceVerified = sortedRecords.isNotEmpty(),
                     successfulChecks = currentChecks,
                     manualStatus = manualStatus
                 )
-            }.sortedByDescending { it.timeVerified }
+            }.sortedByDescending { it.successfulChecks }
         }.collect { mappedList ->
             if (activeClassId == classId) {
                 _presentStudents.value = mappedList
@@ -194,6 +198,8 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
+
+
 
 
 
