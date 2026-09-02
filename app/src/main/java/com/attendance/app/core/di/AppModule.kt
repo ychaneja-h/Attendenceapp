@@ -83,7 +83,14 @@ val dataModule = module {
 val networkModule = module {
     single {
         val tokenManager = get<com.attendance.app.auth.data.TokenManager>()
-        io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) {
+                io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) {
+            engine {
+                config {
+                    connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                }
+            }
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 kotlinx.serialization.json.Json {
                     prettyPrint = true
@@ -101,6 +108,7 @@ val networkModule = module {
     }
  
 }
+
 
 
 
