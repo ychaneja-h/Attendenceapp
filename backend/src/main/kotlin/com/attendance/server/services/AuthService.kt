@@ -1,4 +1,4 @@
-package com.attendance.server.services
+﻿package com.attendance.server.services
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.attendance.server.models.*
@@ -203,7 +203,7 @@ object AuthService {
             val userId = user[Users.id]
             val token = generateToken(userId, user[Users.role])
 
-            val faceEnrolled = FaceTemplates.select { FaceTemplates.userId eq userId }.count() > 0
+            val faceEnrolled = !user[Users.faceEmbedding].isNullOrEmpty()
 
             Users.update({ Users.id eq userId }) {
                 it[lastLoginAt] = Instant.now()
@@ -238,3 +238,4 @@ object AuthService {
         }
     }
 }
+

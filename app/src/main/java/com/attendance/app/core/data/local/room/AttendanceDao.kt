@@ -14,8 +14,11 @@ interface AttendanceDao {
     @Query("SELECT * FROM attendance_records WHERE classId = :classId AND timestamp >= :since ORDER BY timestamp DESC")
     fun getRecordsForClassSince(classId: String, since: Long): Flow<List<AttendanceRecordEntity>>
 
-    @Query("SELECT * FROM attendance_records ORDER BY timestamp DESC")
+        @Query("SELECT * FROM attendance_records ORDER BY timestamp DESC")
     fun getAllRecords(): Flow<List<AttendanceRecordEntity>>
+
+    @Query("DELETE FROM attendance_records WHERE timestamp < :timeLimit")
+    suspend fun deleteOldSyncedRecords(timeLimit: Long)
 
     @Query("SELECT * FROM attendance_records WHERE syncStatus = 'PENDING'")
     suspend fun getPendingSyncRecords(): List<AttendanceRecordEntity>
@@ -26,6 +29,8 @@ interface AttendanceDao {
     @Query("UPDATE attendance_records SET syncStatus = 'SYNCED' WHERE id IN (:recordIds)")
     suspend fun markAsSynced(recordIds: List<String>)
 }
+
+
 
 
 

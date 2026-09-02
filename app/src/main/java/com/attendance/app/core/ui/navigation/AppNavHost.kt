@@ -165,7 +165,7 @@ fun AppNavHost() {
         }
         composable<Screen.LiveSession> { backStackEntry ->
             val args = backStackEntry.toRoute<Screen.LiveSession>()
-            com.attendance.app.teacher.ui.LiveSessionScreen(classId = args.classId, navController = navController, historyStartTime = args.startTime)
+            com.attendance.app.teacher.ui.LiveSessionScreen(classId = args.classId, navController = navController, historyStartTime = if (args.startTime > 0L) args.startTime else null)
         }
 
         // HOD screens
@@ -224,6 +224,7 @@ fun AppNavHost() {
         }
     }
 }
+
 
 
 
