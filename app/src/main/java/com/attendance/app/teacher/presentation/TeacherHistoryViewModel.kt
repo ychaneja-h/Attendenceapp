@@ -28,8 +28,17 @@ class TeacherHistoryViewModel(
     private val _sessions = MutableStateFlow<List<HistorySessionItem>>(emptyList())
     val sessions: StateFlow<List<HistorySessionItem>> = _sessions.asStateFlow()
 
-    init {
+        init {
         viewModelScope.launch {
+            try {
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                calendar.set(java.util.Calendar.MINUTE, 0)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                calendar.set(java.util.Calendar.MILLISECOND, 0)
+                attendanceDao.deleteOldSyncedRecords(calendar.timeInMillis)
+            } catch(e: Exception) { e.printStackTrace() }
+            
             combine(
                 attendanceDao.getAllRecords(),
                 classDao.getAllClasses()
@@ -66,4 +75,5 @@ class TeacherHistoryViewModel(
         }
     }
 }
+
 

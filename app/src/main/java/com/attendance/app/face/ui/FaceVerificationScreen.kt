@@ -68,6 +68,15 @@ fun FaceVerificationScreen(
                         latestEmbeddingRef.value = embedding
                         if (!isFaceDetected) isFaceDetected = true
                         
+                                                val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
+                        val isPending = prefs.getBoolean("face_approval_pending", false)
+                        
+                        if (isPending) {
+                            verificationStatus = "Face approval pending! Cannot mark attendance."
+                            if (isProcessing) isProcessing = false
+                            return@CameraPreviewScreen
+                        }
+
                         if (!isVerified) {
                             if (brightness < 25f) {
                                 verificationStatus = "Too dark! Move to better lighting."
@@ -103,7 +112,7 @@ fun FaceVerificationScreen(
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        if (similarity > 0.78f) {
+                                        if (similarity > 0.73f) {
                                             isVerified = true
                                         } else {
                                             verificationStatus = "Face does not match registered profile"
@@ -175,6 +184,8 @@ fun FaceVerificationScreen(
         }
     }
 }
+
+
 
 
 

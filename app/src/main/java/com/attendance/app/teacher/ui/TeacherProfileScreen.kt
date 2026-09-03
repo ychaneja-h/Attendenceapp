@@ -3,6 +3,10 @@
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.Icons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -61,14 +65,46 @@ fun TeacherProfileScreen(
             when (uiState) {
                 is ProfileUiState.Loading -> CircularProgressIndicator()
                 is ProfileUiState.Error -> Text("Error loading profile")
-                is ProfileUiState.Success -> {
+                                is ProfileUiState.Success -> {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        uri?.let {
+                            val inputStream = context.contentResolver.openInputStream(it)
+                            val bytes = inputStream?.readBytes()
+                            inputStream?.close()
+                            if (bytes != null) {
+                                val fileName = "profile_photo.jpg"
+                                profileViewModel.uploadProfilePhoto(bytes, fileName)
+                            }
+                        }
+                    }
+
+                    Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.BottomEnd) {
+                        coil.compose.AsyncImage(
+                            model = if (photoUrl.isNotEmpty()) "" else null,
+                            contentDescription = "Profile Photo",
+                            modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { photoPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Photo", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
+                        }
+                    }
                     
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = department, onValueChange = { department = it }, label = { Text("Department") }, modifier = Modifier.fillMaxWidth())
+                                        OutlinedTextField(value = department, onValueChange = { department = it }, label = { Text("Department") }, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
+                    
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
@@ -114,6 +150,12 @@ fun TeacherProfileScreen(
         }
     }
 }
+
+
+
+
+
+
 
 
 

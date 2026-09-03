@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,6 +19,7 @@ import org.koin.androidx.compose.koinViewModel
 fun HodLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
+    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var hodId by remember { mutableStateOf("") }
@@ -99,3 +100,4 @@ fun HodLoginScreen(
         }
     }
 }
+

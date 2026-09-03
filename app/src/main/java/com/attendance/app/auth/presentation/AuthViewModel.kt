@@ -16,7 +16,36 @@ class AuthViewModel(
     var isLoading by mutableStateOf(false)
         private set
     var error by mutableStateOf<String?>(null)
+
+        var resetSuccess by mutableStateOf(false)
         private set
+
+    fun resetPassword(collegeId: String, newPassword: String, faceEmbedding: FloatArray) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+            resetSuccess = false
+            
+            val result = repository.resetPassword(
+                com.attendance.shared.dto.ResetPasswordRequest(
+                    collegeId = collegeId,
+                    newPassword = newPassword,
+                    faceEmbedding = faceEmbedding.toList()
+                )
+            )
+            
+            result.onSuccess {
+                resetSuccess = true
+            }.onFailure { e ->
+                error = e.message ?: "Reset failed"
+            }
+            isLoading = false
+        }
+    }
+
+    fun clearResetSuccess() {
+        resetSuccess = false
+    }
 
     fun login(context: android.content.Context, collegeId: String, password: String, onSuccess: (role: String, requiresFace: Boolean) -> Unit, onDeviceMismatch: (String) -> Unit, onPendingApproval: () -> Unit = {}) {
         viewModelScope.launch {
@@ -64,7 +93,8 @@ class AuthViewModel(
         }
     }
 
-    fun register(
+        fun register(
+        context: android.content.Context,
         name: String,
         collegeId: String,
         department: String,
@@ -77,6 +107,7 @@ class AuthViewModel(
         viewModelScope.launch {
             isLoading = true
             error = null
+            val androidId = android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "unknown_device"
             val result = repository.registerStudent(
                 StudentRegisterRequest(
                     collegeId = collegeId,
@@ -85,7 +116,8 @@ class AuthViewModel(
                     department = department,
                     section = section,
                     semester = semester,
-                    academicYear = academicYear
+                    academicYear = academicYear,
+                    deviceFingerprint = androidId
                 )
             )
             result.onSuccess { response ->
@@ -140,6 +172,10 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
+
+
+
 
 
 

@@ -66,10 +66,16 @@ fun AppNavHost() {
                 onAdminLogin = { navController.navigate(Screen.AdminLogin) }
             )
         }
+                composable<Screen.ForgotPassword> {
+            com.attendance.app.auth.ui.ForgotPasswordScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable<Screen.StudentLogin> {
             StudentLoginScreen(
                 onSuccess = handleAuthSuccess,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
             )
         }
         composable<Screen.StudentRegister> {
@@ -82,7 +88,8 @@ fun AppNavHost() {
             TeacherLoginScreen(
                 onSuccess = handleAuthSuccess,
                 onRegisterClick = { navController.navigate(Screen.TeacherRegister) },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
             )
         }
         composable<Screen.TeacherRegister> {
@@ -94,7 +101,8 @@ fun AppNavHost() {
         composable<Screen.HodLogin> {
             HodLoginScreen(
                 onSuccess = handleAuthSuccess,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
             )
         }
         composable<Screen.HodRegister> {
@@ -131,7 +139,8 @@ fun AppNavHost() {
             StudentProfileScreen(navController = navController)
         }
         composable<Screen.JoinClass> {
-            JoinClassScreen(onBack = { navController.popBackStack() })
+            JoinClassScreen(onBack = { navController.popBackStack() }
+            )
         }
 
         // Teacher screens
@@ -154,7 +163,8 @@ fun AppNavHost() {
             TeacherRequestsScreen(navController = navController)
         }
         composable<Screen.CreateClass> {
-            CreateClassScreen(onBack = { navController.popBackStack() })
+            CreateClassScreen(onBack = { navController.popBackStack() }
+            )
         }
         composable<Screen.TeacherClassDetail> { backStackEntry ->
             val args = backStackEntry.toRoute<Screen.TeacherClassDetail>()
@@ -224,6 +234,10 @@ fun AppNavHost() {
         }
     }
 }
+
+
+
+
 
 
 

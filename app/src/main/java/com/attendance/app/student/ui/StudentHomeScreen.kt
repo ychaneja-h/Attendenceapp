@@ -71,7 +71,7 @@ fun StudentHomeScreen(
                                     }
                                 }
                             }
-                                                        if (hasPending) {
+                                                                                    if (hasPending) {
                                 prefs.edit().putBoolean("face_approval_pending", true).apply()
                             } else if (latestApproved != null) {
                                 prefs.edit().putBoolean("face_approval_pending", false).apply()
@@ -88,11 +88,9 @@ fun StudentHomeScreen(
                                     val obj = org.json.JSONObject(faceRes.bodyAsText())
                                     val embed = obj.optString("faceEmbedding", "")
                                     if (embed.isNotEmpty()) {
-                                        prefs.edit().putString("registered_face_embedding", embed).putBoolean("face_approval_pending", false).apply()
+                                        prefs.edit().putString("registered_face_embedding", embed).apply()
                                     }
                                 }
-                            } else {
-                                prefs.edit().putBoolean("face_approval_pending", false).apply()
                             }
                         }
                     } catch (e: Exception) {
@@ -134,23 +132,34 @@ fun StudentHomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Row(
+                                                Row(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Person, 
+                            if (!profile.photoUrl.isNullOrEmpty()) {
+                                coil.compose.AsyncImage(
+                                    model = "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}",
                                     contentDescription = "Profile Photo",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Person, 
+                                        contentDescription = "Profile Photo",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
@@ -269,6 +278,12 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
+
+
+
+
+
 
 
 

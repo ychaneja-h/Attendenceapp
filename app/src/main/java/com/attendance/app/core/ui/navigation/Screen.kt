@@ -12,6 +12,7 @@ sealed interface Screen {
     @Serializable data object HodLogin : Screen
     @Serializable data object HodRegister : Screen
     @Serializable data object AdminLogin : Screen
+    @Serializable data object ForgotPassword : Screen
 
     // Student
     @Serializable data object StudentHome : Screen
@@ -54,4 +55,5 @@ sealed interface Screen {
     @Serializable data object FaceEnrollment : Screen
     @Serializable data class FaceVerification(val classId: String) : Screen
 }
+
 

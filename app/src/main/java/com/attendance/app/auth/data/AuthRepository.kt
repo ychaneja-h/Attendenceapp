@@ -119,6 +119,24 @@ class AuthRepository(
         }
     }
 
+        suspend fun resetPassword(request: com.attendance.shared.dto.ResetPasswordRequest): Result<Unit> {
+        return try {
+            val response = httpClient.post("$baseUrl/reset-password") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                val errorBody = response.bodyAsText()
+                val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody
+                Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Password reset failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun logout() {
         tokenManager.clear()
     }
@@ -139,6 +157,8 @@ class AuthRepository(
         }
     }
 }
+
+
 
 
 

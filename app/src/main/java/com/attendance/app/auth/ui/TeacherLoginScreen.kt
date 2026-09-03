@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -20,6 +20,7 @@ fun TeacherLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onRegisterClick: () -> Unit = {},
     onBack: () -> Unit,
+    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var facultyId by remember { mutableStateOf("") }
@@ -107,9 +108,17 @@ fun TeacherLoginScreen(
                         onPendingApproval = { showPendingApprovalDialog = true }
                     )
                 },
-                isLoading = viewModel.isLoading,
+                                isLoading = viewModel.isLoading,
                 enabled = facultyId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = onForgotPassword) {
+                Text("Forgot Password?")
+            }
         }
     }
 }
+
+
+

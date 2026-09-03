@@ -85,7 +85,7 @@ fun TeacherHomeScreen(
                 sessionInterval.toInt(), 
                 sessionMinChecks.toInt()
             ) {
-                navController.navigate(Screen.LiveSession(selectedClassId!!, sessionInterval.toInt(), sessionMinChecks.toInt()))
+                navController.navigate(Screen.LiveSession(selectedClassId!!, sessionInterval.toInt(), sessionMinChecks.toInt(), attendanceViewModel.activeSessionStartTime.value))
                 selectedClassId = null
                 selectedClassName = null
             }
@@ -115,7 +115,7 @@ fun TeacherHomeScreen(
                     ) {
                         if (profile.photoUrl != null) {
                             AsyncImage(
-                                model = profile.photoUrl,
+                                model = if (!profile.photoUrl.isNullOrEmpty()) "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" else null,
                                 contentDescription = "Profile Photo",
                                 modifier = Modifier
                                     .size(64.dp)
@@ -184,9 +184,29 @@ fun TeacherHomeScreen(
                                             Text("Stop")
                                         }
                                     } else {
-                                        Button(onClick = {
+                                                                                Button(onClick = {
                                             selectedClassId = cls.id
                                             selectedClassName = cls.name
+                                            val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                                arrayOf(
+                                                    android.Manifest.permission.BLUETOOTH_SCAN,
+                                                    android.Manifest.permission.BLUETOOTH_CONNECT,
+                                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    android.Manifest.permission.POST_NOTIFICATIONS
+                                                )
+                                            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                                arrayOf(
+                                                    android.Manifest.permission.BLUETOOTH_SCAN,
+                                                    android.Manifest.permission.BLUETOOTH_CONNECT,
+                                                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                                                )
+                                            } else {
+                                                arrayOf(
+                                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                                )
+                                            }
+                                            permissionLauncher.launch(perms)
                                         }) {
                                             Text("Start")
                                         }
@@ -195,7 +215,7 @@ fun TeacherHomeScreen(
                                 if (isActive) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     OutlinedButton(
-                                        onClick = { navController.navigate(Screen.LiveSession(cls.id)) },
+                                        onClick = { navController.navigate(Screen.LiveSession(cls.id, startTime = attendanceViewModel.activeSessionStartTime.value)) },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text("View Active Session")
@@ -208,7 +228,7 @@ fun TeacherHomeScreen(
             }
         }
     }
-    if (selectedClassId != null && selectedClassName != null) {
+    if (false) {
         LaunchedEffect(selectedClassId) {
             val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 arrayOf(
@@ -264,5 +284,12 @@ fun TeacherBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 4, onClick = { navController.navigate(Screen.TeacherProfile) { launchSingleTop = true } })
     }
 }
+
+
+
+
+
+
+
 
 

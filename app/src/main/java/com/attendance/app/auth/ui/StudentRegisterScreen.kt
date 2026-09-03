@@ -24,6 +24,7 @@ fun StudentRegisterScreen(
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var collegeId by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -89,7 +90,7 @@ fun StudentRegisterScreen(
                     val lName = if (parts.size > 1) parts.drop(1).joinToString(" ") else ""
                     val sem = semester.toIntOrNull() ?: 1
                     
-                    viewModel.register(
+                    viewModel.register(context = context,
                         name = name.trim(),
                         collegeId = collegeId,
                         department = department,
@@ -107,4 +108,5 @@ fun StudentRegisterScreen(
         }
     }
 }
+
 

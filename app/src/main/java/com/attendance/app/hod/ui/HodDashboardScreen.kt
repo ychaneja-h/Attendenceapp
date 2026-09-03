@@ -51,7 +51,7 @@ fun HodDashboardScreen(
                     ) {
                         if (profile.photoUrl != null) {
                             AsyncImage(
-                                model = profile.photoUrl,
+                                model = if (!profile.photoUrl.isNullOrEmpty()) "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" else null,
                                 contentDescription = "Profile Photo",
                                 modifier = Modifier
                                     .size(64.dp)
@@ -155,4 +155,7 @@ fun HodBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 3, onClick = { navController.navigate(Screen.HodProfile) { launchSingleTop = true } })
     }
 }
+
+
+
 

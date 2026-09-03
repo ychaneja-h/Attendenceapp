@@ -196,10 +196,8 @@ object AuthService {
                 throw SecurityException("No registered face found. Cannot reset password.")
             }
             
-            val storedEmbedding = try {
-                org.json.JSONArray(storedEmbeddingStr).let { array ->
-                    List(array.length()) { i -> array.getDouble(i).toFloat() }
-                }
+                        val storedEmbedding = try {
+                kotlinx.serialization.json.Json.decodeFromString<List<Float>>(storedEmbeddingStr)
             } catch (e: Exception) {
                 throw SecurityException("Invalid stored face profile")
             }
@@ -281,6 +279,7 @@ object AuthService {
         }
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -20,6 +20,7 @@ import org.koin.androidx.compose.koinViewModel
 fun StudentLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
+    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var collegeId by remember { mutableStateOf("") }
@@ -108,9 +109,16 @@ fun StudentLoginScreen(
                         onDeviceMismatch = { deviceId -> showDeviceMismatchDialog = deviceId }
                     )
                 },
-                isLoading = viewModel.isLoading,
+                                isLoading = viewModel.isLoading,
                 enabled = collegeId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = onForgotPassword) {
+                Text("Forgot Password?")
+            }
         }
     }
 }
+
+
