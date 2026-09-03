@@ -1,4 +1,4 @@
-package com.attendance.app.auth.ui
+﻿package com.attendance.app.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -45,7 +45,7 @@ fun AdminLoginScreen(
             Text(text = "Admin Login", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Login with your Admin ID. (Default: admin / 123456)",
+                text = "Login with your Admin ID",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -99,3 +99,4 @@ fun AdminLoginScreen(
         }
     }
 }
+

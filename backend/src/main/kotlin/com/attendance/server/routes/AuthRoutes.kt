@@ -59,7 +59,19 @@ fun Route.authRoutes() {
         post("/login") {
             handleLogin(call)
         }
-                post("/reset-password") {
+                        post("/request-device-transfer") {
+            try {
+                val req = call.receive<com.attendance.shared.dto.DeviceTransferAuthReq>()
+                val result = AuthService.requestDeviceTransferAuth(req)
+                call.respond(HttpStatusCode.OK, result)
+            } catch (e: SecurityException) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Failed")))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+            }
+        }
+
+        post("/reset-password") {
             try {
                 val request = call.receive<ResetPasswordRequest>()
                 AuthService.resetPassword(request)
@@ -101,6 +113,7 @@ private suspend fun handleLogin(call: ApplicationCall) {
         }
     }
 }
+
 
 
 

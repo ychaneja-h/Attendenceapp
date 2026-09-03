@@ -73,3 +73,10 @@ data class ResetPasswordRequest(
     val newPassword: String,
     val faceEmbedding: List<Float>
 )
+
+@Serializable
+data class DeviceTransferAuthReq(
+    val collegeId: String,
+    val password: String,
+    val newDeviceId: String
+)

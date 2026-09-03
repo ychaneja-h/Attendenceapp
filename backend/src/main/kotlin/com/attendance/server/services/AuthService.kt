@@ -186,6 +186,42 @@ object AuthService {
         return (dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))).toFloat()
     }
 
+        fun requestDeviceTransferAuth(request: DeviceTransferAuthReq): Map<String, String> {
+        return transaction {
+            val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
+                ?: throw IllegalArgumentException("Invalid credentials")
+
+            val result = BCrypt.verifyer().verify(request.password.toCharArray(), user[Users.passwordHash])
+            if (!result.verified) {
+                throw IllegalArgumentException("Invalid credentials")
+            }
+
+            val studentId = user[Users.id]
+
+            // Find first enrolled class teacher
+            val classId = ClassMembers.select { ClassMembers.studentId eq studentId }
+                .firstOrNull()?.get(ClassMembers.classId)
+                ?: throw SecurityException("You must be enrolled in a class to request a device change.")
+
+            val teacherId = Classes.select { Classes.id eq classId }
+                .firstOrNull()?.get(Classes.teacherId)
+                ?: throw SecurityException("Class has no assigned teacher.")
+
+            val teacherName = Users.select { Users.id eq teacherId }
+                .firstOrNull()?.get(Users.name) ?: "Unknown Teacher"
+
+            // Create the request
+            ApprovalRequests.insert {
+                it[this.studentId] = studentId
+                it[requestType] = "DEVICE_CHANGE"
+                it[requestedData] = request.newDeviceId
+                it[status] = "PENDING"
+                it[createdAt] = Instant.now()
+            }
+
+            mapOf("message" to "Device transfer request sent to $teacherName")
+        }
+    }
     fun resetPassword(request: com.attendance.shared.dto.ResetPasswordRequest) {
         transaction {
             val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
@@ -279,6 +315,8 @@ object AuthService {
         }
     }
 }
+
+
 
 
 

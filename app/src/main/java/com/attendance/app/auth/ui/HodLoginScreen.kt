@@ -46,7 +46,7 @@ fun HodLoginScreen(
             Text(text = "HOD Login", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Login with your Employee ID. (Default: hod_cs / 123456)",
+                text = "Login with your Employee ID",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -100,4 +100,5 @@ fun HodLoginScreen(
         }
     }
 }
+
 

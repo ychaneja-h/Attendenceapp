@@ -47,7 +47,7 @@ fun TeacherLoginScreen(
             Text(text = "Teacher Login", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Login with your Faculty ID. (Default: teacher1 / 123456)",
+                text = "Login with your Faculty ID",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -119,6 +119,7 @@ fun TeacherLoginScreen(
         }
     }
 }
+
 
 
 
