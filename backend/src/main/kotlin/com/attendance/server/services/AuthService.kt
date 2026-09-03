@@ -174,6 +174,48 @@ object AuthService {
         }
     }
 
+        private fun cosineSimilarity(vectorA: List<Float>, vectorB: List<Float>): Float {
+        var dotProduct = 0.0
+        var normA = 0.0
+        var normB = 0.0
+        for (i in vectorA.indices) {
+            dotProduct += vectorA[i] * vectorB[i]
+            normA += vectorA[i] * vectorA[i]
+            normB += vectorB[i] * vectorB[i]
+        }
+        return (dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))).toFloat()
+    }
+
+    fun resetPassword(request: com.attendance.shared.dto.ResetPasswordRequest) {
+        transaction {
+            val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
+                ?: throw IllegalArgumentException("User not found")
+            
+            val storedEmbeddingStr = user[Users.faceEmbedding]
+            if (storedEmbeddingStr.isNullOrEmpty()) {
+                throw SecurityException("No registered face found. Cannot reset password.")
+            }
+            
+            val storedEmbedding = try {
+                org.json.JSONArray(storedEmbeddingStr).let { array ->
+                    List(array.length()) { i -> array.getDouble(i).toFloat() }
+                }
+            } catch (e: Exception) {
+                throw SecurityException("Invalid stored face profile")
+            }
+            
+            val similarity = cosineSimilarity(request.faceEmbedding, storedEmbedding)
+            if (similarity < 0.73f) {
+                throw SecurityException("Face does not match registered profile")
+            }
+            
+            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.newPassword.toCharArray())
+            Users.update({ Users.id eq user[Users.id] }) {
+                it[passwordHash] = hashedPassword
+            }
+        }
+    }
+
     fun initiateLogin(request: LoginRequest): AuthTokenResponse {
         return transaction {
             val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
@@ -239,5 +281,6 @@ object AuthService {
         }
     }
 }
+
 
 

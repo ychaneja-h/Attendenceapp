@@ -66,3 +66,10 @@ data class VerifyStaffCodeRequest(
     val passcode: String
 )
 
+
+@Serializable
+data class ResetPasswordRequest(
+    val collegeId: String,
+    val newPassword: String,
+    val faceEmbedding: List<Float>
+)
