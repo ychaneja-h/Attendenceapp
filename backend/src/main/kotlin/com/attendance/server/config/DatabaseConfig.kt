@@ -29,6 +29,9 @@ object DatabaseConfig {
             maximumPoolSize = 3
             minimumIdle = 1
             isAutoCommit = false
+            addDataSourceProperty("prepareThreshold", "0")
+            addDataSourceProperty("preparedStatementCacheQueries", "0")
+            addDataSourceProperty("preparedStatementCacheSizeMiB", "0")
             // transactionIsolation removed for Supabase pooler compatibility
             connectionTimeout = 30000
             idleTimeout = 600000
@@ -62,5 +65,6 @@ object DatabaseConfig {
         }
     }
 }
+
 
 
