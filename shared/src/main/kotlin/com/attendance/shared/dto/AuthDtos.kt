@@ -10,7 +10,8 @@ data class StudentRegisterRequest(
     val department: String,
     val section: String,
     val semester: Int,
-    val academicYear: String
+    val academicYear: String,
+    val deviceFingerprint: String = "unknown"
 )
 
 @Serializable
@@ -64,3 +65,4 @@ data class ErrorResponse(
 data class VerifyStaffCodeRequest(
     val passcode: String
 )
+

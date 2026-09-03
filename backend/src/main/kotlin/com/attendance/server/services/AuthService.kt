@@ -55,6 +55,7 @@ object AuthService {
                 it[collegeId] = request.collegeId
                 it[name] = request.name
                 it[passwordHash] = hashedPassword
+                it[deviceId] = request.deviceFingerprint
                 it[role] = UserRole.STUDENT.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
                 it[accountStatus] = "ACTIVE"
@@ -238,4 +239,5 @@ object AuthService {
         }
     }
 }
+
 
