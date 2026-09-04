@@ -19,7 +19,6 @@ import org.koin.androidx.compose.koinViewModel
 fun HodLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
-    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var hodId by remember { mutableStateOf("") }
@@ -72,7 +71,7 @@ fun HodLoginScreen(
                     text = { Text("This account is bound to another device. Request a device transfer?") },
                     confirmButton = {
                         TextButton(onClick = {
-                            viewModel.requestDeviceTransfer(deviceId) {
+                            viewModel.requestDeviceTransfer(context, hodId, password, deviceId) {
                                 showDeviceMismatchDialog = null
                             }
                         }) { Text("Yes") }
@@ -100,5 +99,9 @@ fun HodLoginScreen(
         }
     }
 }
+
+
+
+
 
 

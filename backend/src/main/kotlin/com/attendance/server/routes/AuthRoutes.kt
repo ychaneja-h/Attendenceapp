@@ -71,17 +71,7 @@ fun Route.authRoutes() {
             }
         }
 
-        post("/reset-password") {
-            try {
-                val request = call.receive<ResetPasswordRequest>()
-                AuthService.resetPassword(request)
-                call.respond(HttpStatusCode.OK, mapOf("message" to "Password reset successful"))
-            } catch (e: SecurityException) {
-                call.respond(HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Face verification failed")))
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Reset failed")))
-            }
-        }
+
 
         post("/student/login") {
             handleLogin(call)
@@ -113,6 +103,7 @@ private suspend fun handleLogin(call: ApplicationCall) {
         }
     }
 }
+
 
 
 

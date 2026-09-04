@@ -1,5 +1,8 @@
 ﻿package com.attendance.app.auth.data
 
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
+
 import com.attendance.shared.dto.AuthTokenResponse
 import com.attendance.shared.dto.LoginRequest
 import com.attendance.shared.dto.StudentRegisterRequest
@@ -119,18 +122,22 @@ class AuthRepository(
         }
     }
 
-        suspend fun resetPassword(request: com.attendance.shared.dto.ResetPasswordRequest): Result<Unit> {
+            suspend fun changePassword(newPassword: String, faceEmbedding: FloatArray): Result<Unit> {
         return try {
-            val response = httpClient.post("$baseUrl/reset-password") {
+            val token = tokenManager.getToken() ?: return Result.failure(Exception("Not logged in"))
+            val response = httpClient.post("${Constants.BASE_URL}/users/change-password") {
                 contentType(ContentType.Application.Json)
-                setBody(request)
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(mapOf(
+                    "newPassword" to newPassword,
+                    "faceEmbedding" to faceEmbedding.toList()
+                ))
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
             } else {
-                val errorBody = response.bodyAsText()
-                val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody
-                Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Password reset failed"))
+                val obj = org.json.JSONObject(response.bodyAsText())
+                Result.failure(Exception(obj.optString("error", "Failed to change password")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -141,22 +148,34 @@ class AuthRepository(
         tokenManager.clear()
     }
 
-    suspend fun requestDeviceTransfer(newDeviceId: String): Result<Unit> {
+        suspend fun requestDeviceTransfer(collegeId: String, password: String, newDeviceId: String): Result<String> {
         return try {
-            val response = httpClient.post("${Constants.BASE_URL}/requests/device") {
+            val response = httpClient.post("${Constants.BASE_URL}/auth/request-device-transfer") {
                 contentType(ContentType.Application.Json)
-                setBody(mapOf("newDeviceId" to newDeviceId))
+                setBody(mapOf(
+                    "collegeId" to collegeId,
+                    "password" to password,
+                    "newDeviceId" to newDeviceId
+                ))
             }
             if (response.status.isSuccess()) {
-                Result.success(Unit)
+                val obj = org.json.JSONObject(response.bodyAsText())
+                Result.success(obj.optString("message", "Request sent"))
             } else {
-                Result.failure(Exception("Failed: ${response.status}"))
+                val obj = org.json.JSONObject(response.bodyAsText())
+                Result.failure(Exception(obj.optString("error", "Failed to request transfer")))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 }
+
+
+
+
+
+
 
 
 

@@ -66,16 +66,15 @@ fun AppNavHost() {
                 onAdminLogin = { navController.navigate(Screen.AdminLogin) }
             )
         }
-                composable<Screen.ForgotPassword> {
-            com.attendance.app.auth.ui.ForgotPasswordScreen(
+                composable<Screen.ChangePassword> {
+            com.attendance.app.auth.ui.ChangePasswordScreen(
                 onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.StudentLogin> {
             StudentLoginScreen(
                 onSuccess = handleAuthSuccess,
-                onBack = { navController.popBackStack() },
-                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
+                onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.StudentRegister> {
@@ -88,8 +87,7 @@ fun AppNavHost() {
             TeacherLoginScreen(
                 onSuccess = handleAuthSuccess,
                 onRegisterClick = { navController.navigate(Screen.TeacherRegister) },
-                onBack = { navController.popBackStack() },
-                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
+                onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.TeacherRegister> {
@@ -101,8 +99,7 @@ fun AppNavHost() {
         composable<Screen.HodLogin> {
             HodLoginScreen(
                 onSuccess = handleAuthSuccess,
-                onBack = { navController.popBackStack() },
-                onForgotPassword = { navController.navigate(Screen.ForgotPassword) }
+                onBack = { navController.popBackStack() }
             )
         }
         composable<Screen.HodRegister> {
@@ -234,6 +231,7 @@ fun AppNavHost() {
         }
     }
 }
+
 
 
 

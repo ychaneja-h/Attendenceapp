@@ -20,7 +20,6 @@ import org.koin.androidx.compose.koinViewModel
 fun StudentLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onBack: () -> Unit,
-    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var collegeId by remember { mutableStateOf("") }
@@ -87,7 +86,7 @@ fun StudentLoginScreen(
                     text = { Text("This account is bound to another device. Request a device transfer?") },
                     confirmButton = {
                         TextButton(onClick = {
-                            viewModel.requestDeviceTransfer(deviceId) {
+                            viewModel.requestDeviceTransfer(context, collegeId, password, deviceId) {
                                 showDeviceMismatchDialog = null
                             }
                         }) { Text("Yes") }
@@ -113,12 +112,13 @@ fun StudentLoginScreen(
                 enabled = collegeId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(onClick = onForgotPassword) {
-                Text("Forgot Password?")
-            }
+            
         }
     }
 }
+
+
+
+
 
 

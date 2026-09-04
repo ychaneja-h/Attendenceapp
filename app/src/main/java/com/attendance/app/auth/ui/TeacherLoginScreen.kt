@@ -20,7 +20,6 @@ fun TeacherLoginScreen(
     onSuccess: (role: String, requiresFace: Boolean) -> Unit,
     onRegisterClick: () -> Unit = {},
     onBack: () -> Unit,
-    onForgotPassword: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     var facultyId by remember { mutableStateOf("") }
@@ -74,7 +73,7 @@ fun TeacherLoginScreen(
                     text = { Text("This account is bound to another device. Request a device transfer?") },
                     confirmButton = {
                         TextButton(onClick = {
-                            viewModel.requestDeviceTransfer(deviceId) {
+                            viewModel.requestDeviceTransfer(context, facultyId, password, deviceId) {
                                 showDeviceMismatchDialog = null
                             }
                         }) { Text("Yes") }
@@ -112,13 +111,15 @@ fun TeacherLoginScreen(
                 enabled = facultyId.isNotBlank() && password.isNotBlank() && !viewModel.isLoading
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(onClick = onForgotPassword) {
-                Text("Forgot Password?")
-            }
+            
         }
     }
 }
+
+
+
+
+
 
 
 

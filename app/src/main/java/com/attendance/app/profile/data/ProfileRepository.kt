@@ -1,4 +1,4 @@
-﻿package com.attendance.app.profile.data
+package com.attendance.app.profile.data
 
 import com.attendance.app.auth.data.TokenManager
 import com.attendance.app.core.network.Constants
@@ -33,11 +33,21 @@ class ProfileRepository(
                 ?: return Result.failure(Exception("Not authenticated"))
 
             val response = httpClient.get(baseUrl) {
-
+                header(HttpHeaders.Authorization, "Bearer $token")
             }
 
             if (response.status.isSuccess()) {
-                val profile: ProfileResponse = response.body()
+                var profile: ProfileResponse = response.body()
+                
+                // Inject local photo if exists
+                val userId = tokenManager.getUserId()
+                if (userId != null) {
+                    val file = java.io.File(context.filesDir, "profile_photo_${userId}.jpg")
+                    if (file.exists()) {
+                        profile = profile.copy(photoUrl = file.absolutePath)
+                    }
+                }
+                
                 prefs.edit().putString("cached_profile", Json.encodeToString(profile)).apply()
                 Result.success(profile)
             } else {
@@ -84,22 +94,16 @@ class ProfileRepository(
 
     suspend fun uploadProfilePhoto(byteArray: ByteArray, fileName: String): Result<ProfileResponse> {
         return try {
-            val token = tokenManager.getToken() ?: return Result.failure(Exception("Not authenticated"))
-            val response = httpClient.submitFormWithBinaryData(
-                url = "${Constants.BASE_URL}/users/me/photo",
-                formData = io.ktor.client.request.forms.formData {
-                    append("image", byteArray, io.ktor.http.Headers.build {
-                        append(HttpHeaders.ContentType, "image/jpeg")
-                        append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
-                    })
-                }
-            ) {
-
-            }
-            if (response.status.isSuccess()) {
-                Result.success(response.body())
+            val userId = tokenManager.getUserId() ?: return Result.failure(Exception("Not authenticated"))
+            val file = java.io.File(context.filesDir, "profile_photo_${userId}.jpg")
+            java.io.FileOutputStream(file).use { it.write(byteArray) }
+            
+            // Return updated profile with local path
+            val profileResult = getProfile()
+            if (profileResult.isSuccess) {
+                Result.success(profileResult.getOrNull()!!)
             } else {
-                Result.failure(Exception("Upload failed: ${response.status}"))
+                Result.failure(Exception("Saved locally, but failed to refresh profile"))
             }
         } catch(e: Exception) {
             Result.failure(e)

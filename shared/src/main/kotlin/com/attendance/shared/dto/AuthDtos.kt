@@ -80,3 +80,9 @@ data class DeviceTransferAuthReq(
     val password: String,
     val newDeviceId: String
 )
+
+@Serializable
+data class ChangePasswordRequest(
+    val newPassword: String,
+    val faceEmbedding: List<Float>
+)

@@ -46,7 +46,15 @@ fun StudentProfileScreen(
     val isSaving by profileViewModel.isSaving.collectAsState()
     val saveMessage by profileViewModel.saveMessage.collectAsState()
     
-    val context = LocalContext.current
+                OutlinedButton(
+                onClick = { navController.navigate(Screen.ChangePassword) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Change Password")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val context = LocalContext.current
     var faceApprovalStatus by remember { mutableStateOf("Checking...") }
     val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
 
@@ -132,7 +140,15 @@ fun StudentProfileScreen(
                 is ProfileUiState.Loading -> CircularProgressIndicator()
                 is ProfileUiState.Error -> Text("Error loading profile")
                 is ProfileUiState.Success -> {
-                    val context = LocalContext.current
+                                OutlinedButton(
+                onClick = { navController.navigate(Screen.ChangePassword) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Change Password")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val context = LocalContext.current
                     val photoPickerLauncher = rememberLauncherForActivityResult(
                         contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
                     ) { uri ->
@@ -149,7 +165,7 @@ fun StudentProfileScreen(
 
                     Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.BottomEnd) {
                         coil.compose.AsyncImage(
-                            model = if (photoUrl.isNotEmpty()) "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}$photoUrl" else null,
+                            model = if (photoUrl.isNotEmpty()) { if (photoUrl.startsWith("/")) java.io.File(photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}$photoUrl" } else null,
                             contentDescription = "Profile Photo",
                             modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -236,6 +252,14 @@ fun StudentProfileScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+                        OutlinedButton(
+                onClick = { navController.navigate(Screen.ChangePassword) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Change Password")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
             val context = LocalContext.current
             OutlinedButton(
                 onClick = {
@@ -260,6 +284,13 @@ fun StudentProfileScreen(
         }
     }
 }
+
+
+
+
+
+
+
 
 
 

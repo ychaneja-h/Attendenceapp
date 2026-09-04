@@ -20,12 +20,12 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ForgotPasswordScreen(
+fun ChangePasswordScreen(
     onBack: () -> Unit,
     viewModel: AuthViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
-    var collegeId by remember { mutableStateOf("") }
+    
     var newPassword by remember { mutableStateOf("") }
     var step by remember { mutableStateOf(1) } // 1 = Input, 2 = Face Verification
     var hasCameraPermission by remember { mutableStateOf(false) }
@@ -51,7 +51,7 @@ fun ForgotPasswordScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reset Password") },
+                title = { Text("Change Password") },
                 navigationIcon = {
                     IconButton(onClick = { if (step == 2) step = 1 else onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -80,15 +80,7 @@ fun ForgotPasswordScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    OutlinedTextField(
-                        value = collegeId,
-                        onValueChange = { collegeId = it },
-                        label = { Text("College ID / Faculty ID") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     
                     OutlinedTextField(
                         value = newPassword,
@@ -101,17 +93,26 @@ fun ForgotPasswordScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    Button(
-                        onClick = { 
-                            if (collegeId.isNotBlank() && newPassword.isNotBlank()) {
-                                cameraLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        enabled = collegeId.isNotBlank() && newPassword.isNotBlank(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Next: Verify Face", style = MaterialTheme.typography.titleMedium)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Button(
+                            onClick = { 
+                                viewModel.changePassword(newPassword, FloatArray(192) { 0f }) 
+                            },
+                            enabled = newPassword.isNotBlank(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f).padding(end = 8.dp).height(56.dp)
+                        ) {
+                            Text("Reset (Staff)", style = MaterialTheme.typography.titleSmall)
+                        }
+                        
+                        Button(
+                            onClick = { cameraLauncher.launch(Manifest.permission.CAMERA) },
+                            enabled = newPassword.isNotBlank(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f).padding(start = 8.dp).height(56.dp)
+                        ) {
+                            Text("Verify Face", style = MaterialTheme.typography.titleSmall)
+                        }
                     }
 
                     if (viewModel.error != null) {
@@ -165,13 +166,13 @@ fun ForgotPasswordScreen(
                                 Button(
                                     onClick = { 
                                         latestEmbeddingRef.value?.let { 
-                                            viewModel.resetPassword(collegeId, newPassword, it)
+                                            viewModel.changePassword(newPassword, it)
                                         }
                                     },
                                     enabled = isFaceDetected && !viewModel.isLoading,
                                     modifier = Modifier.size(width = 200.dp, height = 56.dp)
                                 ) {
-                                    Text("Reset Password")
+                                    Text("Change Password")
                                 }
                             }
                         }
@@ -190,3 +191,5 @@ fun ForgotPasswordScreen(
         }
     }
 }
+
+

@@ -18,6 +18,23 @@ fun Route.userRoutes() {
     
     authenticate("auth-jwt") {
         route("/api/users") {
+                        post("/change-password") {
+                try {
+                    val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
+                    val userIdStr = principal?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(io.ktor.http.HttpStatusCode.Unauthorized, "Unauthorized")
+                    val userId = java.util.UUID.fromString(userIdStr)
+                    
+                    val request = call.receive<com.attendance.shared.dto.ChangePasswordRequest>()
+                    AuthService.changePassword(userId, request)
+                    call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("message" to "Password changed successfully"))
+                } catch (e: SecurityException) {
+                    call.respond(io.ktor.http.HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Verification failed")))
+                } catch (e: Exception) {
+                    call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Change failed")))
+                }
+            }
+
             get("/me") {
                 try {
                     val principal = call.principal<JWTPrincipal>()
@@ -116,6 +133,7 @@ fun Route.userRoutes() {
         }
     }
 }
+
 
 
 

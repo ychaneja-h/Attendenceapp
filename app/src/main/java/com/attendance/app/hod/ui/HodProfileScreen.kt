@@ -82,7 +82,7 @@ fun HodProfileScreen(
 
                     Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.BottomEnd) {
                         coil.compose.AsyncImage(
-                            model = if (photoUrl.isNotEmpty()) "" else null,
+                            model = if (photoUrl.isNotEmpty()) { if (photoUrl.startsWith("/")) java.io.File(photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}$photoUrl" } else null,
                             contentDescription = "Profile Photo",
                             modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -125,6 +125,14 @@ fun HodProfileScreen(
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(24.dp))
 
+                        OutlinedButton(
+                onClick = { navController.navigate(Screen.ChangePassword) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Change Password")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedButton(
                 onClick = {
                     authViewModel.logout()
@@ -147,6 +155,14 @@ fun HodProfileScreen(
         }
     }
 }
+
+
+
+
+
+
+
+
 
 
 

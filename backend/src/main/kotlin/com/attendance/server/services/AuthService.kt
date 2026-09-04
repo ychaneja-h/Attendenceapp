@@ -222,33 +222,37 @@ object AuthService {
             mapOf("message" to "Device transfer request sent to $teacherName")
         }
     }
-    fun resetPassword(request: com.attendance.shared.dto.ResetPasswordRequest) {
+        fun changePassword(userId: UUID, request: ChangePasswordRequest) {
         transaction {
-            val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
+            val user = Users.select { Users.id eq userId }.firstOrNull()
                 ?: throw IllegalArgumentException("User not found")
             
-            val storedEmbeddingStr = user[Users.faceEmbedding]
-            if (storedEmbeddingStr.isNullOrEmpty()) {
-                throw SecurityException("No registered face found. Cannot reset password.")
-            }
-            
-                        val storedEmbedding = try {
-                kotlinx.serialization.json.Json.decodeFromString<List<Float>>(storedEmbeddingStr)
-            } catch (e: Exception) {
-                throw SecurityException("Invalid stored face profile")
-            }
-            
-            val similarity = cosineSimilarity(request.faceEmbedding, storedEmbedding)
-            if (similarity < 0.73f) {
-                throw SecurityException("Face does not match registered profile")
+            if (user[Users.role] == com.attendance.shared.model.UserRole.STUDENT.name) {
+                val storedEmbeddingStr = user[Users.faceEmbedding]
+                if (storedEmbeddingStr.isNullOrEmpty()) {
+                    throw SecurityException("No registered face found. Cannot change password.")
+                }
+                
+                val storedEmbedding = try {
+                    kotlinx.serialization.json.Json.decodeFromString<List<Float>>(storedEmbeddingStr)
+                } catch (e: Exception) {
+                    throw SecurityException("Invalid stored face profile")
+                }
+                
+                val similarity = cosineSimilarity(request.faceEmbedding, storedEmbedding)
+                if (similarity < 0.73f) {
+                    throw SecurityException("Face does not match registered profile")
+                }
             }
             
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.newPassword.toCharArray())
-            Users.update({ Users.id eq user[Users.id] }) {
+            Users.update({ Users.id eq userId }) {
                 it[passwordHash] = hashedPassword
             }
         }
     }
+
+
 
     fun initiateLogin(request: LoginRequest): AuthTokenResponse {
         return transaction {
@@ -315,6 +319,9 @@ object AuthService {
         }
     }
 }
+
+
+
 
 
 

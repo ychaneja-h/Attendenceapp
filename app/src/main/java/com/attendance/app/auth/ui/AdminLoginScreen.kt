@@ -71,7 +71,7 @@ fun AdminLoginScreen(
                     text = { Text("This account is bound to another device. Request a device transfer?") },
                     confirmButton = {
                         TextButton(onClick = {
-                            viewModel.requestDeviceTransfer(deviceId) {
+                            viewModel.requestDeviceTransfer(context, adminId, password, deviceId) {
                                 showDeviceMismatchDialog = null
                             }
                         }) { Text("Yes") }
@@ -99,4 +99,6 @@ fun AdminLoginScreen(
         }
     }
 }
+
+
 

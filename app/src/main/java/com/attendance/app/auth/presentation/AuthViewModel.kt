@@ -20,24 +20,16 @@ class AuthViewModel(
         var resetSuccess by mutableStateOf(false)
         private set
 
-    fun resetPassword(collegeId: String, newPassword: String, faceEmbedding: FloatArray) {
+        fun changePassword(newPassword: String, faceEmbedding: FloatArray) {
         viewModelScope.launch {
             isLoading = true
             error = null
-            resetSuccess = false
-            
-            val result = repository.resetPassword(
-                com.attendance.shared.dto.ResetPasswordRequest(
-                    collegeId = collegeId,
-                    newPassword = newPassword,
-                    faceEmbedding = faceEmbedding.toList()
-                )
-            )
-            
+            val result = repository.changePassword(newPassword, faceEmbedding)
             result.onSuccess {
                 resetSuccess = true
-            }.onFailure { e ->
-                error = e.message ?: "Reset failed"
+            }
+            result.onFailure {
+                error = it.message ?: "Change failed"
             }
             isLoading = false
         }
@@ -80,13 +72,16 @@ class AuthViewModel(
         }
     }
 
-    fun requestDeviceTransfer(newDeviceId: String, onComplete: () -> Unit) {
+            fun requestDeviceTransfer(context: android.content.Context, collegeId: String, password: String, newDeviceId: String, onComplete: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
             error = null
-            val result = repository.requestDeviceTransfer(newDeviceId)
+            val result = repository.requestDeviceTransfer(collegeId, password, newDeviceId)
             result.onFailure { e ->
                 error = e.message ?: "Failed to request device transfer"
+            }
+            result.onSuccess { msg ->
+                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
             }
             onComplete()
             isLoading = false
@@ -172,6 +167,9 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
+
+
 
 
 

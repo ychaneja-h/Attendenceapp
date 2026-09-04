@@ -138,7 +138,7 @@ fun StudentHomeScreen(
                         ) {
                             if (!profile.photoUrl.isNullOrEmpty()) {
                                 coil.compose.AsyncImage(
-                                    model = "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}",
+                                    model = if (profile.photoUrl?.startsWith("/") == true) java.io.File(profile.photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}",
                                     contentDescription = "Profile Photo",
                                     modifier = Modifier
                                         .size(64.dp)
@@ -278,6 +278,10 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
+
+
+
 
 
 
