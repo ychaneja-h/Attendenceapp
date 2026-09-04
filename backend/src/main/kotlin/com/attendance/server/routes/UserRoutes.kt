@@ -14,6 +14,9 @@ import com.attendance.shared.dto.UpdateProfileRequest
 import java.util.UUID
 import org.jetbrains.exposed.sql.*
 
+@kotlinx.serialization.Serializable
+data class FaceResponse(val faceEmbedding: String)
+
 fun Route.userRoutes() {
     val userService = UserService()
     
@@ -28,11 +31,11 @@ fun Route.userRoutes() {
                     
                     val request = call.receive<com.attendance.shared.dto.ChangePasswordRequest>()
                     AuthService.changePassword(userId, request)
-                    call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("message" to "Password changed successfully"))
+                    call.respond(io.ktor.http.HttpStatusCode.OK, com.attendance.server.plugins.ErrorResponse("SUCCESS", "Password changed successfully"))
                 } catch (e: SecurityException) {
-                    call.respond(io.ktor.http.HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Verification failed")))
+                    call.respond(io.ktor.http.HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("FORBIDDEN", e.message ?: "Verification failed"))
                 } catch (e: Exception) {
-                    call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Change failed")))
+                    call.respond(io.ktor.http.HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("BAD_REQUEST", e.message ?: "Change failed"))
                 }
             }
 
@@ -76,7 +79,7 @@ fun Route.userRoutes() {
                     }
                     if (user != null) {
                         val embedding = user[com.attendance.server.models.Users.faceEmbedding]
-                        call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("faceEmbedding" to (embedding ?: "")))
+                        call.respond(io.ktor.http.HttpStatusCode.OK, FaceResponse(embedding ?: ""))
                     } else {
                         call.respond(io.ktor.http.HttpStatusCode.NotFound, "User not found")
                     }
@@ -134,6 +137,9 @@ fun Route.userRoutes() {
         }
     }
 }
+
+
+
 
 
 

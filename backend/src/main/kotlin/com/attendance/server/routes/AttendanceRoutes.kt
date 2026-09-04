@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.AttendanceService
 import com.attendance.server.services.SyncRecordRequest
@@ -15,6 +15,7 @@ import io.ktor.server.auth.principal
 import io.ktor.server.response.respondText
 import io.ktor.http.ContentType
 
+
 fun Route.attendanceRoutes(attendanceService: AttendanceService) {
     route("/api/attendance") {
         authenticate {
@@ -29,9 +30,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                         request.checkIntervalMinutes, 
                         request.minSuccessfulChecks
                     )
-                    call.respond(HttpStatusCode.OK, mapOf("sessionId" to sessionId))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(sessionId = sessionId.toString()))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             
@@ -40,9 +41,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val request = call.receive<Map<String, String>>()
                     val classId = request["classId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
                     attendanceService.stopSession(classId)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
 
@@ -50,9 +51,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                 try {
                     val sessionId = call.parameters["sessionId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
                     attendanceService.stopSession(java.util.UUID.fromString(sessionId))
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
 
@@ -62,7 +63,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val responses = attendanceService.syncRecords(records)
                     call.respond(HttpStatusCode.OK, responses)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
 
@@ -73,9 +74,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val studentId = principal?.payload?.getClaim("userId")?.asString() ?: return@get call.respond(HttpStatusCode.Unauthorized)
                     
                     val status = attendanceService.getStudentTodayStatus(java.util.UUID.fromString(classId), java.util.UUID.fromString(studentId))
-                    call.respond(HttpStatusCode.OK, mapOf("status" to status))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = status))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             
@@ -85,7 +86,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val response = attendanceService.getLiveSession(classId)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             
@@ -93,9 +94,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                 try {
                     val request = call.receive<OverrideRequest>()
                     attendanceService.overrideStatus(request.classId, request.studentId, request.status, request.reason)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             
@@ -105,7 +106,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val response = attendanceService.getReviews(classId)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
         }
@@ -120,7 +121,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val csvString = attendanceService.getStudentMonthReportCsv(java.util.UUID.fromString(classId), java.util.UUID.fromString(studentId), month)
                     call.respondText(csvString, ContentType.Text.CSV)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             get("/class/{classId}/csv") {
@@ -130,7 +131,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val csvString = attendanceService.getClassMonthReportCsv(java.util.UUID.fromString(classId), month)
                     call.respondText(csvString, ContentType.Text.CSV)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
             get("/student/summary") {
@@ -141,7 +142,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val summary = attendanceService.getStudentSummary(java.util.UUID.fromString(studentId), month)
                     call.respond(HttpStatusCode.OK, summary)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
         }
@@ -162,3 +163,8 @@ data class OverrideRequest(
     val status: String,
     val reason: String
 )
+
+
+
+
+

@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.AdminService
 import io.ktor.http.*
@@ -17,7 +17,7 @@ fun Route.adminRoutes() {
                 val principal = call.principal<JWTPrincipal>()
                 val role = principal?.payload?.getClaim("role")?.asString()
                 if (role != "ADMIN") {
-                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Admin access required"))
+                    call.respond(HttpStatusCode.Forbidden, com.attendance.shared.dto.GenericResponse(error = "Admin access required"))
                     finish()
                 }
             }
@@ -28,7 +28,7 @@ fun Route.adminRoutes() {
                         val hods = AdminService.getPendingHods()
                         call.respond(HttpStatusCode.OK, hods)
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to get pending HODs")))
+                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to get pending HODs")))
                     }
                 }
 
@@ -37,7 +37,7 @@ fun Route.adminRoutes() {
                         val hods = AdminService.getActiveHods()
                         call.respond(HttpStatusCode.OK, hods)
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to get active HODs")))
+                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to get active HODs")))
                     }
                 }
                 
@@ -45,9 +45,9 @@ fun Route.adminRoutes() {
                     try {
                         val id = UUID.fromString(call.parameters["id"])
                         AdminService.approveHod(id)
-                        call.respond(HttpStatusCode.OK, mapOf("message" to "HOD approved successfully"))
+                        call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD approved successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to approve HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to approve HOD")))
                     }
                 }
 
@@ -55,9 +55,9 @@ fun Route.adminRoutes() {
                     try {
                         val id = UUID.fromString(call.parameters["id"])
                         AdminService.rejectHod(id)
-                        call.respond(HttpStatusCode.OK, mapOf("message" to "HOD rejected successfully"))
+                        call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD rejected successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to reject HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to reject HOD")))
                     }
                 }
                 
@@ -65,12 +65,13 @@ fun Route.adminRoutes() {
                     try {
                         val id = UUID.fromString(call.parameters["id"])
                         AdminService.deleteHod(id)
-                        call.respond(HttpStatusCode.OK, mapOf("message" to "HOD deleted successfully"))
+                        call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD deleted successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to delete HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to delete HOD")))
                     }
                 }
             }
         }
     }
 }
+

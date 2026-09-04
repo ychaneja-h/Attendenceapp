@@ -34,6 +34,10 @@ fun HodDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val profileUiState by profileViewModel.uiState.collectAsState()
 
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        profileViewModel.loadProfile()
+    }
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("HOD Dashboard") }) },
         bottomBar = { HodBottomBar(navController, 0) }
@@ -155,6 +159,7 @@ fun HodBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 3, onClick = { navController.navigate(Screen.HodProfile) { launchSingleTop = true } })
     }
 }
+
 
 
 

@@ -28,9 +28,9 @@ fun Route.requestRoutes() {
                     val studentId = UUID.fromString(principal!!.payload.getClaim("userId").asString())
                     val req = call.receive<DeviceChangeReq>()
                     requestService.createRequest(studentId, "DEVICE_CHANGE", req.newDeviceId)
-                    call.respond(HttpStatusCode.Created, mapOf("status" to "success"))
+                    call.respond(HttpStatusCode.Created, com.attendance.shared.dto.GenericResponse(status = "success"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
 
@@ -40,9 +40,9 @@ fun Route.requestRoutes() {
                     val studentId = UUID.fromString(principal!!.payload.getClaim("userId").asString())
                     val req = call.receive<FaceRegistrationReq>()
                     val result = requestService.createFaceRequest(studentId, req.faceEmbeddingJSON)
-                    call.respond(HttpStatusCode.Created, mapOf("status" to result))
+                    call.respond(HttpStatusCode.Created, com.attendance.shared.dto.GenericResponse(status = result))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
 
@@ -53,7 +53,7 @@ fun Route.requestRoutes() {
                     val requests = requestService.getMyRequests(studentId)
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
 
@@ -62,7 +62,7 @@ fun Route.requestRoutes() {
                     val requests = requestService.getPendingRequests()
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
 
@@ -70,9 +70,9 @@ fun Route.requestRoutes() {
                 try {
                     val id = UUID.fromString(call.parameters["id"])
                     requestService.approveRequest(id)
-                    call.respond(HttpStatusCode.OK, mapOf("status" to "approved"))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = "approved"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
 
@@ -80,13 +80,14 @@ fun Route.requestRoutes() {
                 try {
                     val id = UUID.fromString(call.parameters["id"])
                     requestService.rejectRequest(id)
-                    call.respond(HttpStatusCode.OK, mapOf("status" to "rejected"))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = "rejected"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
                 }
             }
         }
     }
 }
+
 
 

@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.HodService
 import io.ktor.http.*
@@ -45,9 +45,9 @@ fun Route.hodRoutes() {
                 try {
                     val teacherId = UUID.fromString(teacherIdStr)
                     HodService.approveTeacher(hodId, teacherId)
-                    call.respond(HttpStatusCode.OK, mapOf("message" to "Teacher approved"))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "Teacher approved"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to approve")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to approve")))
                 }
             }
 
@@ -62,9 +62,9 @@ fun Route.hodRoutes() {
                 try {
                     val teacherId = UUID.fromString(teacherIdStr)
                     HodService.rejectTeacher(hodId, teacherId)
-                    call.respond(HttpStatusCode.OK, mapOf("message" to "Teacher rejected"))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "Teacher rejected"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to reject")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to reject")))
                 }
             }
 
@@ -79,11 +79,12 @@ fun Route.hodRoutes() {
                 try {
                     val teacherId = UUID.fromString(teacherIdStr)
                     HodService.deleteTeacher(hodId, teacherId)
-                    call.respond(HttpStatusCode.OK, mapOf("message" to "Teacher deleted"))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "Teacher deleted"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to delete")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to delete")))
                 }
             }
         }
     }
 }
+

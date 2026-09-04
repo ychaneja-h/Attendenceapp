@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.http.*
 
+
 fun Route.authRoutes() {
     route("/api/auth") {
         post("/student/register") {
@@ -16,7 +17,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerStudent(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
             }
         }
 
@@ -26,7 +27,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerTeacher(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
             }
         }
 
@@ -36,7 +37,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerHod(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Registration failed")))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
             }
         }
 
@@ -47,12 +48,12 @@ fun Route.authRoutes() {
                 val officialCode = System.getenv("STAFF_MASTER_CODE") ?: "Yogesh@Rtu@admin"
                 
                 if (passcode == officialCode) {
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } else {
-                    call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid passcode"))
+                    call.respond(HttpStatusCode.Unauthorized, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
                 }
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid request"))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
             }
         }
 
@@ -65,9 +66,9 @@ fun Route.authRoutes() {
                 val result = AuthService.requestDeviceTransferAuth(req)
                 call.respond(HttpStatusCode.OK, result)
             } catch (e: SecurityException) {
-                call.respond(HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Failed")))
+                call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed")))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
             }
         }
 
@@ -95,14 +96,17 @@ private suspend fun handleLogin(call: ApplicationCall) {
         call.respond(HttpStatusCode.OK, response)
     } catch (e: Exception) {
         if (e.message == "DEVICE_MISMATCH") {
-            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "DEVICE_MISMATCH"))
+            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
         } else if (e.message == "PENDING_APPROVAL") {
-            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "PENDING_APPROVAL"))
+            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
         } else {
-            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to (e.message ?: "Login failed")))
+            call.respond(HttpStatusCode.Unauthorized, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
         }
     }
 }
+
+
+
 
 
 

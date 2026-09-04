@@ -37,6 +37,10 @@ fun StudentHomeScreen(
     httpClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        profileViewModel.loadProfile()
+    }
     val summary by profileViewModel.studentSummary.collectAsState()
     val classes by classViewModel.classes.collectAsState()
     var showJoinDialog by remember { mutableStateOf(false) }
@@ -278,6 +282,7 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
 
 
 

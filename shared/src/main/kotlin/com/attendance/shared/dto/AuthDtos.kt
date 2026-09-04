@@ -86,3 +86,14 @@ data class ChangePasswordRequest(
     val newPassword: String,
     val faceEmbedding: List<Float>
 )
+
+@Serializable
+data class GenericResponse(
+    val message: String? = null,
+    val error: String? = null,
+    val success: Boolean? = null,
+    val status: String? = null,
+    val sessionId: String? = null
+)
+
+

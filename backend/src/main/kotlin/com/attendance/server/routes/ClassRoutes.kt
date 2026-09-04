@@ -1,4 +1,4 @@
-package com.attendance.server.routes
+﻿package com.attendance.server.routes
 
 import com.attendance.server.services.ClassService
 import com.attendance.shared.dto.CreateClassRequest
@@ -26,7 +26,7 @@ fun Route.classRoutes() {
                     val response = ClassService.createClass(teacherId, request)
                     call.respond(HttpStatusCode.Created, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to create class")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to create class")))
                 }
             }
             
@@ -37,7 +37,7 @@ fun Route.classRoutes() {
                     val classes = ClassService.getTeacherClasses(teacherId)
                     call.respond(HttpStatusCode.OK, classes)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to fetch classes")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch classes")))
                 }
             }
 
@@ -51,7 +51,7 @@ fun Route.classRoutes() {
                     val response = ClassService.joinClass(studentId, request)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to join class")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to join class")))
                 }
             }
             
@@ -62,7 +62,7 @@ fun Route.classRoutes() {
                     val classes = ClassService.getStudentClasses(studentId)
                     call.respond(HttpStatusCode.OK, classes)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to fetch classes")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch classes")))
                 }
             }
 
@@ -72,7 +72,7 @@ fun Route.classRoutes() {
                     val requests = ClassService.getPendingRequests(classId)
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to fetch pending requests")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch pending requests")))
                 }
             }
 
@@ -82,7 +82,7 @@ fun Route.classRoutes() {
                     val requests = ClassService.getAllRequests(classId)
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to fetch roster")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch roster")))
                 }
             }
 
@@ -90,9 +90,9 @@ fun Route.classRoutes() {
                 try {
                     val reqId = UUID.fromString(call.parameters["reqId"])
                     ClassService.approveRequest(reqId)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to approve request")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to approve request")))
                 }
             }
 
@@ -100,9 +100,9 @@ fun Route.classRoutes() {
                 try {
                     val reqId = UUID.fromString(call.parameters["reqId"])
                     ClassService.rejectRequest(reqId)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to reject request")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to reject request")))
                 }
             }
             
@@ -111,9 +111,9 @@ fun Route.classRoutes() {
                     val classId = UUID.fromString(call.parameters["id"])
                     val studentId = UUID.fromString(call.parameters["studentId"])
                     ClassService.removeStudent(classId, studentId)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to remove student")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to remove student")))
                 }
             }
             
@@ -121,9 +121,9 @@ fun Route.classRoutes() {
                 try {
                     val classId = UUID.fromString(call.parameters["id"])
                     ClassService.deleteClass(classId)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true))
+                    call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Failed to delete class")))
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to delete class")))
                 }
             }
             
@@ -133,3 +133,4 @@ fun Route.classRoutes() {
         }
     }
 }
+
