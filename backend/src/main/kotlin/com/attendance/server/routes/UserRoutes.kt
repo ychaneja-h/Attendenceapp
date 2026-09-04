@@ -9,6 +9,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import com.attendance.server.services.UserService
+import com.attendance.server.services.AuthService
 import com.attendance.shared.dto.UpdateProfileRequest
 import java.util.UUID
 import org.jetbrains.exposed.sql.*
@@ -133,6 +134,7 @@ fun Route.userRoutes() {
         }
     }
 }
+
 
 
 
