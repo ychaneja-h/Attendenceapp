@@ -95,15 +95,17 @@ private suspend fun handleLogin(call: ApplicationCall) {
         val response = AuthService.initiateLogin(request)
         call.respond(HttpStatusCode.OK, response)
     } catch (e: Exception) {
-        if (e.message == "DEVICE_MISMATCH") {
-            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
-        } else if (e.message == "PENDING_APPROVAL") {
-            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", "Failed"))
+        val msg = e.message ?: "Failed"
+        if (msg == "DEVICE_MISMATCH") {
+            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("DEVICE_MISMATCH", msg))
+        } else if (msg == "PENDING_APPROVAL") {
+            call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("PENDING_APPROVAL", msg))
         } else {
-            call.respond(HttpStatusCode.Unauthorized, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+            call.respond(HttpStatusCode.Unauthorized, com.attendance.server.plugins.ErrorResponse("ERROR", msg))
         }
     }
 }
+
 
 
 
