@@ -137,9 +137,9 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
-            get("/student/today") {
+            get("/class/{classId}/student/today") {
                 try {
-                    val classId = call.request.queryParameters["classId"] ?: return@get call.respond(io.ktor.http.HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("BAD_REQUEST", "Missing classId"))
+                    val classId = call.parameters["classId"] ?: return@get call.respond(io.ktor.http.HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("BAD_REQUEST", "Missing classId"))
                     val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
                     val studentIdStr = principal?.payload?.getClaim("userId")?.asString() ?: return@get call.respond(io.ktor.http.HttpStatusCode.Unauthorized)
                     
@@ -194,6 +194,7 @@ data class OverrideRequest(
     val status: String,
     val reason: String
 )
+
 
 
 
