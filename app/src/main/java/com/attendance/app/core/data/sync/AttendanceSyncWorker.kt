@@ -1,4 +1,4 @@
-﻿package com.attendance.app.core.data.sync
+package com.attendance.app.core.data.sync
 
 import android.content.Context
 import android.util.Log
@@ -52,7 +52,7 @@ setBody(syncRequests)
             }
 
             if (response.status.isSuccess()) {
-                // Mark as SYNCED
+                // Mark as SYNCED (it will be deleted at midnight by the HistoryViewModel)
                 val syncedIds = pendingRecords.map { it.id }
                 attendanceDao.markAsSynced(syncedIds)
                 Result.success()

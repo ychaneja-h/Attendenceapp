@@ -1,4 +1,4 @@
-package com.attendance.app.profile.data
+﻿package com.attendance.app.profile.data
 
 import com.attendance.app.auth.data.TokenManager
 import com.attendance.app.core.network.Constants
@@ -42,9 +42,9 @@ class ProfileRepository(
                 // Inject local photo if exists
                 val userId = tokenManager.getUserId()
                 if (userId != null) {
-                    val file = java.io.File(context.filesDir, "profile_photo_${userId}.jpg")
-                    if (file.exists()) {
-                        profile = profile.copy(photoUrl = file.absolutePath)
+                    val matchingFile = context.filesDir.listFiles { _, name -> name.startsWith("profile_photo_${userId}_") }?.maxByOrNull { it.lastModified() }
+                    if (matchingFile != null && matchingFile.exists()) {
+                        profile = profile.copy(photoUrl = matchingFile.absolutePath)
                     }
                 }
                 
@@ -95,7 +95,8 @@ class ProfileRepository(
     suspend fun uploadProfilePhoto(byteArray: ByteArray, fileName: String): Result<ProfileResponse> {
         return try {
             val userId = tokenManager.getUserId() ?: return Result.failure(Exception("Not authenticated"))
-            val file = java.io.File(context.filesDir, "profile_photo_${userId}.jpg")
+            context.filesDir.listFiles { _, name -> name.startsWith("profile_photo_${userId}_") }?.forEach { it.delete() }
+            val file = java.io.File(context.filesDir, "profile_photo_${userId}_${System.currentTimeMillis()}.jpg")
             java.io.FileOutputStream(file).use { it.write(byteArray) }
             
             // Return updated profile with local path
@@ -132,6 +133,10 @@ data class StudentSummaryResponse(
     val totalPresent: Int,
     val totalAbsent: Int
 )
+
+
+
+
 
 
 

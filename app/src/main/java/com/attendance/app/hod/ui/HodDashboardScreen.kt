@@ -1,4 +1,4 @@
-﻿package com.attendance.app.hod.ui
+package com.attendance.app.hod.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -34,8 +34,15 @@ fun HodDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val profileUiState by profileViewModel.uiState.collectAsState()
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        profileViewModel.loadProfile()
+        val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                profileViewModel.loadProfile()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -55,7 +62,7 @@ fun HodDashboardScreen(
                     ) {
                         if (profile.photoUrl != null) {
                             AsyncImage(
-                                model = if (!profile.photoUrl.isNullOrEmpty()) "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" else null,
+                                model = if (!profile.photoUrl.isNullOrEmpty()) { if (profile.photoUrl!!.startsWith("/")) java.io.File(profile.photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" } else null,
                                 contentDescription = "Profile Photo",
                                 modifier = Modifier
                                     .size(64.dp)
@@ -159,6 +166,7 @@ fun HodBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 3, onClick = { navController.navigate(Screen.HodProfile) { launchSingleTop = true } })
     }
 }
+
 
 
 

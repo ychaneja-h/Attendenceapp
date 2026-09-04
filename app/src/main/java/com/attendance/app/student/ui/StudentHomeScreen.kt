@@ -1,4 +1,4 @@
-﻿package com.attendance.app.student.ui
+package com.attendance.app.student.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -38,9 +38,6 @@ fun StudentHomeScreen(
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        profileViewModel.loadProfile()
-    }
     val summary by profileViewModel.studentSummary.collectAsState()
     val classes by classViewModel.classes.collectAsState()
     var showJoinDialog by remember { mutableStateOf(false) }
@@ -52,6 +49,7 @@ fun StudentHomeScreen(
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                profileViewModel.loadProfile()
                 classViewModel.fetchStudentClasses()
                 
                 // Sync face status quietly in background
@@ -282,6 +280,9 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
+
+
 
 
 

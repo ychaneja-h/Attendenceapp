@@ -1,4 +1,4 @@
-﻿package com.attendance.app.teacher.ui
+package com.attendance.app.teacher.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothManager
@@ -94,8 +94,16 @@ fun TeacherHomeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        classViewModel.fetchTeacherClasses()
+    val teacherLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(teacherLifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                profileViewModel.loadProfile()
+                classViewModel.fetchTeacherClasses()
+            }
+        }
+        teacherLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { teacherLifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -115,7 +123,7 @@ fun TeacherHomeScreen(
                     ) {
                         if (profile.photoUrl != null) {
                             AsyncImage(
-                                model = if (!profile.photoUrl.isNullOrEmpty()) "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" else null,
+                                model = if (!profile.photoUrl.isNullOrEmpty()) { if (profile.photoUrl!!.startsWith("/")) java.io.File(profile.photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" } else null,
                                 contentDescription = "Profile Photo",
                                 modifier = Modifier
                                     .size(64.dp)
@@ -284,6 +292,7 @@ fun TeacherBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 4, onClick = { navController.navigate(Screen.TeacherProfile) { launchSingleTop = true } })
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-﻿package com.attendance.app.core.data.local.room
+package com.attendance.app.core.data.local.room
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -17,7 +17,7 @@ interface AttendanceDao {
         @Query("SELECT * FROM attendance_records ORDER BY timestamp DESC")
     fun getAllRecords(): Flow<List<AttendanceRecordEntity>>
 
-    @Query("DELETE FROM attendance_records WHERE timestamp < :timeLimit")
+    @Query("DELETE FROM attendance_records WHERE syncStatus = 'SYNCED' AND timestamp < :timeLimit")
     suspend fun deleteOldSyncedRecords(timeLimit: Long)
 
     @Query("SELECT * FROM attendance_records WHERE syncStatus = 'PENDING'")
@@ -28,6 +28,9 @@ interface AttendanceDao {
 
     @Query("UPDATE attendance_records SET syncStatus = 'SYNCED' WHERE id IN (:recordIds)")
     suspend fun markAsSynced(recordIds: List<String>)
+    
+    @Query("DELETE FROM attendance_records WHERE id IN (:recordIds)")
+    suspend fun deleteRecords(recordIds: List<String>)
 }
 
 

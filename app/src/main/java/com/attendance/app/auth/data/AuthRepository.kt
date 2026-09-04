@@ -1,4 +1,4 @@
-﻿package com.attendance.app.auth.data
+package com.attendance.app.auth.data
 
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
@@ -122,19 +122,20 @@ class AuthRepository(
         }
     }
 
-            suspend fun changePassword(newPassword: String, faceEmbedding: FloatArray): Result<Unit> {
+    suspend fun changePassword(newPassword: String, faceEmbedding: FloatArray): Result<Unit> {
         return try {
-            val token = tokenManager.getToken() ?: return Result.failure(Exception("Not logged in"))
+            if (tokenManager.getToken() == null) return Result.failure(Exception("Not logged in"))
             val response = httpClient.post("${Constants.BASE_URL}/users/change-password") {
                 contentType(ContentType.Application.Json)
-                header(HttpHeaders.Authorization, "Bearer $token")
                 setBody(com.attendance.shared.dto.ChangePasswordRequest(newPassword, faceEmbedding.toList()))
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
             } else {
-                val obj = org.json.JSONObject(response.bodyAsText())
-                Result.failure(Exception(obj.optString("error", "Failed to change password")))
+                val errorText = response.bodyAsText()
+                val obj = org.json.JSONObject(errorText)
+                val msg = obj.optString("message", obj.optString("error", "Failed to change password"))
+                Result.failure(Exception(msg))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -168,6 +169,7 @@ class AuthRepository(
         }
     }
 }
+
 
 
 

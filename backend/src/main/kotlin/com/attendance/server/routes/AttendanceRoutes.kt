@@ -6,6 +6,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
@@ -134,6 +137,34 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
                 }
             }
+            get("/student/today") {
+                try {
+                    val classId = call.request.queryParameters["classId"] ?: return@get call.respond(io.ktor.http.HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("BAD_REQUEST", "Missing classId"))
+                    val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
+                    val studentIdStr = principal?.payload?.getClaim("userId")?.asString() ?: return@get call.respond(io.ktor.http.HttpStatusCode.Unauthorized)
+                    
+                    val cid = java.util.UUID.fromString(classId)
+                    val sid = java.util.UUID.fromString(studentIdStr)
+                    
+                    val status = org.jetbrains.exposed.sql.transactions.transaction {
+                        val todayStart = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS)
+                        val session = com.attendance.server.models.AttendanceSessions.selectAll()
+                            .where { (com.attendance.server.models.AttendanceSessions.classId eq cid) and (com.attendance.server.models.AttendanceSessions.startedAt greaterEq todayStart) }
+                            .firstOrNull() ?: return@transaction "NO_SESSION"
+                            
+                        val record = com.attendance.server.models.AttendanceRecords.selectAll()
+                            .where { (com.attendance.server.models.AttendanceRecords.sessionId eq session[com.attendance.server.models.AttendanceSessions.id]) and (com.attendance.server.models.AttendanceRecords.studentId eq sid) }
+                            .firstOrNull() ?: return@transaction "ABSENT"
+                            
+                        record[com.attendance.server.models.AttendanceRecords.finalStatus]
+                    }
+                    
+                    call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("status" to status))
+                } catch (e: Exception) {
+                    call.respond(io.ktor.http.HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                }
+            }
+
             get("/student/summary") {
                 try {
                     val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
@@ -163,6 +194,8 @@ data class OverrideRequest(
     val status: String,
     val reason: String
 )
+
+
 
 
 
