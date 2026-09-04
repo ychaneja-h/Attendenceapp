@@ -73,8 +73,10 @@ fun ChangePasswordScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                                        val role = viewModel.getRole()
+                    val subtitle = if (role == "STUDENT") "You must verify your face to reset your password." else "Enter your new password below."
                     Text(
-                        "You must verify your face to reset your password.",
+                        subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -93,25 +95,27 @@ fun ChangePasswordScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Button(
-                            onClick = { 
-                                viewModel.changePassword(newPassword, FloatArray(192) { 0f }) 
-                            },
-                            enabled = newPassword.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f).padding(end = 8.dp).height(56.dp)
-                        ) {
-                            Text("Reset (Staff)", style = MaterialTheme.typography.titleSmall)
-                        }
-                        
-                        Button(
-                            onClick = { cameraLauncher.launch(Manifest.permission.CAMERA) },
-                            enabled = newPassword.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f).padding(start = 8.dp).height(56.dp)
-                        ) {
-                            Text("Verify Face", style = MaterialTheme.typography.titleSmall)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        if (role != "STUDENT") {
+                            Button(
+                                onClick = { 
+                                    viewModel.changePassword(newPassword, FloatArray(192) { 0f }) 
+                                },
+                                enabled = newPassword.isNotBlank(),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp)
+                            ) {
+                                Text("Reset Password", style = MaterialTheme.typography.titleSmall)
+                            }
+                        } else {
+                            Button(
+                                onClick = { cameraLauncher.launch(Manifest.permission.CAMERA) },
+                                enabled = newPassword.isNotBlank(),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp)
+                            ) {
+                                Text("Verify Face & Reset", style = MaterialTheme.typography.titleSmall)
+                            }
                         }
                     }
 
@@ -191,5 +195,6 @@ fun ChangePasswordScreen(
         }
     }
 }
+
 
 

@@ -20,6 +20,8 @@ class AuthViewModel(
         var resetSuccess by mutableStateOf(false)
         private set
 
+        fun getRole(): String? = repository.getRole()
+
         fun changePassword(newPassword: String, faceEmbedding: FloatArray) {
         viewModelScope.launch {
             isLoading = true
@@ -167,6 +169,7 @@ class AuthViewModel(
         repository.logout()
     }
 }
+
 
 
 

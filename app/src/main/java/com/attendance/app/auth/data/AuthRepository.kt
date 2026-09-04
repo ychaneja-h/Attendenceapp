@@ -128,10 +128,7 @@ class AuthRepository(
             val response = httpClient.post("${Constants.BASE_URL}/users/change-password") {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $token")
-                setBody(mapOf(
-                    "newPassword" to newPassword,
-                    "faceEmbedding" to faceEmbedding.toList()
-                ))
+                setBody(com.attendance.shared.dto.ChangePasswordRequest(newPassword, faceEmbedding.toList()))
             }
             if (response.status.isSuccess()) {
                 Result.success(Unit)
@@ -144,6 +141,7 @@ class AuthRepository(
         }
     }
 
+    fun getRole(): String? = tokenManager.getRole()
     fun logout() {
         tokenManager.clear()
     }
@@ -170,6 +168,9 @@ class AuthRepository(
         }
     }
 }
+
+
+
 
 
 

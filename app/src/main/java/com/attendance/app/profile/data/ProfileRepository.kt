@@ -33,7 +33,7 @@ class ProfileRepository(
                 ?: return Result.failure(Exception("Not authenticated"))
 
             val response = httpClient.get(baseUrl) {
-                header(HttpHeaders.Authorization, "Bearer $token")
+
             }
 
             if (response.status.isSuccess()) {
