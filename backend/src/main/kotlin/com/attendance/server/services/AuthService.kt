@@ -188,11 +188,18 @@ object AuthService {
 
         fun requestDeviceTransferAuth(request: DeviceTransferAuthReq): com.attendance.shared.dto.GenericResponse {
         return transaction {
-            val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-                ?: throw IllegalArgumentException("Invalid credentials")
+            val users = Users.select { Users.collegeId eq request.collegeId }.toList()
+            if (users.isEmpty()) throw IllegalArgumentException("Invalid credentials")
 
-            val result = BCrypt.verifyer().verify(request.password.toCharArray(), user[Users.passwordHash])
-            if (!result.verified) {
+            var user: org.jetbrains.exposed.sql.ResultRow? = null
+            for (u in users) {
+                val result = at.favre.lib.crypto.bcrypt.BCrypt.verifyer().verify(request.password.toCharArray(), u[Users.passwordHash])
+                if (result.verified) {
+                    user = u
+                    break
+                }
+            }
+            if (user == null) {
                 throw IllegalArgumentException("Invalid credentials")
             }
 
@@ -238,11 +245,18 @@ object AuthService {
 
     fun initiateLogin(request: LoginRequest): AuthTokenResponse {
         return transaction {
-            val user = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-                ?: throw IllegalArgumentException("Invalid credentials")
+            val users = Users.select { Users.collegeId eq request.collegeId }.toList()
+            if (users.isEmpty()) throw IllegalArgumentException("Invalid credentials")
 
-            val result = BCrypt.verifyer().verify(request.password.toCharArray(), user[Users.passwordHash])
-            if (!result.verified) {
+            var user: org.jetbrains.exposed.sql.ResultRow? = null
+            for (u in users) {
+                val result = at.favre.lib.crypto.bcrypt.BCrypt.verifyer().verify(request.password.toCharArray(), u[Users.passwordHash])
+                if (result.verified) {
+                    user = u
+                    break
+                }
+            }
+            if (user == null) {
                 throw IllegalArgumentException("Invalid credentials")
             }
 
@@ -301,6 +315,7 @@ object AuthService {
         }
     }
 }
+
 
 
 
