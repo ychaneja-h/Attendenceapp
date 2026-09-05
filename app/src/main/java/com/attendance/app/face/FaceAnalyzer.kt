@@ -37,8 +37,6 @@ class FaceAnalyzer(
     private val INPUT_IMAGE_SIZE = 112
     private val EMBEDDING_SIZE = 128
 
-    private val faceBitmap = Bitmap.createBitmap(INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, Bitmap.Config.ARGB_8888)
-    private val faceCanvas = android.graphics.Canvas(faceBitmap)
     private val intValues = IntArray(INPUT_IMAGE_SIZE * INPUT_IMAGE_SIZE)
     private val inputBuffer = ByteBuffer.allocateDirect(1 * INPUT_IMAGE_SIZE * INPUT_IMAGE_SIZE * 3 * 4).apply {
         order(ByteOrder.nativeOrder())
@@ -152,15 +150,13 @@ class FaceAnalyzer(
             val scaledFace = Bitmap.createScaledBitmap(croppedFace, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true)
             croppedFace.recycle()
 
-            // Draw to faceCanvas
-            faceCanvas.drawColor(android.graphics.Color.BLACK)
-            faceCanvas.drawBitmap(scaledFace, 0f, 0f, null)
+            // Extract pixels directly from scaled 112x112 face
+            scaledFace.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
 
             var embedding = FloatArray(EMBEDDING_SIZE)
 
             if (interpreter != null) {
                 inputBuffer.rewind()
-                faceBitmap.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
 
                 // Normalize pixel values for MobileFaceNet: (pixel - 127.5) / 128.0
                 for (pixelValue in intValues) {
@@ -190,7 +186,7 @@ class FaceAnalyzer(
             // Pass a copy of the faceBitmap so UI can render it safely
             onFaceDetected(
                 embedding, 
-                Bitmap.createBitmap(faceBitmap), 
+                Bitmap.createBitmap(scaledFace), 
                 face.leftEyeOpenProbability, 
                 face.rightEyeOpenProbability, 
                 face.smilingProbability, 
