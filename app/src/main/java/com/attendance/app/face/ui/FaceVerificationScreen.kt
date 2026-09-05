@@ -108,8 +108,8 @@ fun FaceVerificationScreen(
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        // 0.75 threshold with 3 consecutive frames We require 3 consecutive frames to pass to eliminate spikes.
-                                        if (similarity >= 0.75f) {
+                                        // 0.80 is standard. We require 3 consecutive frames to pass to eliminate spikes.
+                                        if (similarity >= 0.80f) {
                                             consecutiveMatches++
                                             if (consecutiveMatches >= 3) {
                                                 isVerified = true
@@ -186,4 +186,3 @@ fun FaceVerificationScreen(
         }
     }
 }
-
