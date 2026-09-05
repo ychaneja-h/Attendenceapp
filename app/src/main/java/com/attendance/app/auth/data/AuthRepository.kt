@@ -1,4 +1,4 @@
-package com.attendance.app.auth.data
+﻿package com.attendance.app.auth.data
 
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
@@ -55,7 +55,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -75,7 +75,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -95,7 +95,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -115,7 +115,7 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val errMsg = if (errorBody.contains("\"error\"")) errorBody.substringAfter("\"error\":\"").substringBefore("\"") else errorBody; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Login failed"))
+                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Login failed"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -169,6 +169,10 @@ class AuthRepository(
         }
     }
 }
+
+
+
+
 
 
 
