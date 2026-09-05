@@ -62,6 +62,7 @@ fun FaceVerificationScreen(
                 val latestEmbeddingRef = remember { mutableStateOf<FloatArray?>(null) }
                 var isFaceDetected by remember { mutableStateOf(false) }
                 var challengePassed by remember { mutableStateOf(false) }
+                var consecutiveMatches by remember { mutableIntStateOf(0) }
                 val currentChallenge = remember { Challenge.entries.random() }
                 
                 CameraPreviewScreen(
@@ -107,13 +108,19 @@ fun FaceVerificationScreen(
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        // 0.85 is a highly strict industrial threshold for MobileFaceNet
-                                        if (similarity >= 0.85f) {
-                                            isVerified = true
+                                        // 0.80 is standard. We require 3 consecutive frames to pass to eliminate spikes.
+                                        if (similarity >= 0.80f) {
+                                            consecutiveMatches++
+                                            if (consecutiveMatches >= 3) {
+                                                isVerified = true
+                                            } else {
+                                                verificationStatus = "Hold still... ($consecutiveMatches/3)"
+                                                isProcessing = false
+                                            }
                                         } else {
+                                            consecutiveMatches = 0
                                             verificationStatus = "Face does not match... (Score: " + String.format("%.2f", similarity) + ")"
                                             isProcessing = false
-                                            // DO NOT reset challengePassed! Let them continue adjusting without forcing them to re-blink.
                                         }
                                     } catch (e: Exception) {
                                         verificationStatus = "Error reading profile"
