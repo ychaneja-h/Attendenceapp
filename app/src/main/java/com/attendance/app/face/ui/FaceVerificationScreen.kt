@@ -101,6 +101,9 @@ fun FaceVerificationScreen(
                                 verificationStatus = "Verifying..."
                                 
                                 val storedStr = prefs.getString("registered_face_embedding", null)
+                                    ?: prefs.getString("pending_face_embedding", null)?.also {
+                                        prefs.edit().putString("registered_face_embedding", it).apply()
+                                    }
                                 
                                 if (storedStr != null) {
                                     try {
