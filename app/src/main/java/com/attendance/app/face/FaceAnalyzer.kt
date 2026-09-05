@@ -1,4 +1,4 @@
-package com.attendance.app.face
+﻿package com.attendance.app.face
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -97,40 +97,76 @@ class FaceAnalyzer(
         }
     }
 
+        @SuppressLint("UnsafeOptInUsageError")
     private fun processFace(face: Face, imageProxy: ImageProxy, mediaImage: android.media.Image) {
         try {
             val yBuffer = imageProxy.planes[0].buffer
-            // Duplicate the buffer before reading so we don't consume it if needed elsewhere
             val yBufferDup = yBuffer.duplicate()
             val yData = ByteArray(yBufferDup.remaining())
             yBufferDup.get(yData)
             val brightness = yData.map { it.toInt() and 0xFF }.average().toFloat()
-
-            // In a real implementation, we would crop the YUV mediaImage to the face bounding box
-            // and convert to a 112x112 Bitmap for TFLite.
-            // For stability and demonstration, we will generate a mock embedding if the model isn't loaded,
-            // or attempt to run the model if it is.
             
+            // Extract full bitmap using CameraX built-in method
+            val fullBitmap = imageProxy.toBitmap()
+            
+            // Rotate the bitmap to match the screen orientation
+            val matrix = Matrix()
+            matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
+            val rotatedBitmap = Bitmap.createBitmap(fullBitmap, 0, 0, fullBitmap.width, fullBitmap.height, matrix, true)
+            
+            // Crop face bounding box
+            val box = face.boundingBox
+            val left = maxOf(0, box.left)
+            val top = maxOf(0, box.top)
+            val right = minOf(rotatedBitmap.width, box.right)
+            val bottom = minOf(rotatedBitmap.height, box.bottom)
+            var width = right - left
+            var height = bottom - top
+            
+            val faceBitmap = if (width > 0 && height > 0) {
+                Bitmap.createBitmap(rotatedBitmap, left, top, width, height)
+            } else {
+                Bitmap.createBitmap(112, 112, Bitmap.Config.ARGB_8888)
+            }
+            
+            val scaledFace = Bitmap.createScaledBitmap(faceBitmap, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true)
             val embedding = FloatArray(EMBEDDING_SIZE)
             
             if (interpreter != null) {
-                // We have the model. Create a dummy buffer for now to prevent crashes 
-                // if the actual bitmap manipulation is imperfect. 
-                // Production requires precise YUV to RGB cropping.
                 val inputBuffer = ByteBuffer.allocateDirect(1 * INPUT_IMAGE_SIZE * INPUT_IMAGE_SIZE * 3 * 4)
                 inputBuffer.order(ByteOrder.nativeOrder())
                 
+                val intValues = IntArray(INPUT_IMAGE_SIZE * INPUT_IMAGE_SIZE)
+                scaledFace.getPixels(intValues, 0, scaledFace.width, 0, 0, scaledFace.width, scaledFace.height)
+                
+                for (pixelValue in intValues) {
+                    val r = ((pixelValue shr 16) and 0xFF)
+                    val g = ((pixelValue shr 8) and 0xFF)
+                    val b = (pixelValue and 0xFF)
+                    
+                    // Normalize to [-1, 1]
+                    inputBuffer.putFloat((r - 127.5f) / 128.0f)
+                    inputBuffer.putFloat((g - 127.5f) / 128.0f)
+                    inputBuffer.putFloat((b - 127.5f) / 128.0f)
+                }
+                
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
                 interpreter?.run(inputBuffer, outputBuffer)
-                
-                // Copy result
                 System.arraycopy(outputBuffer[0], 0, embedding, 0, EMBEDDING_SIZE)
             } else {
-                // Mock embedding generator if model file is missing
                 for (i in 0 until EMBEDDING_SIZE) {
                     embedding[i] = Math.random().toFloat()
                 }
             }
+            
+            onFaceDetected(embedding, scaledFace, face.leftEyeOpenProbability, face.rightEyeOpenProbability, face.smilingProbability, brightness)
+        } catch (e: Exception) {
+            Log.e("FaceAnalyzer", "Error processing face", e)
+            onError("Error processing face")
+        } finally {
+            imageProxy.close()
+        }
+    }
             
             // Create a dummy bitmap for the UI to display the "captured" face
             val dummyBitmap = Bitmap.createBitmap(112, 112, Bitmap.Config.ARGB_8888)
@@ -144,3 +180,4 @@ class FaceAnalyzer(
         }
     }
 }
+
