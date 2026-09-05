@@ -112,77 +112,96 @@ fun LiveSessionScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Class Roster ()", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val maxChecks = presentStudents.maxOfOrNull { it.successfulChecks } ?: 0
+                    val minChecksReq = (maxChecks * 0.75).toInt().coerceAtLeast(1)
+                    
+                    val presentList = presentStudents.filter { it.manualStatus == "PRESENT" || (it.manualStatus == null && it.successfulChecks >= minChecksReq && it.successfulChecks > 0) }
+                    val reviewList = presentStudents.filter { it.manualStatus == null && it.successfulChecks > 0 && it.successfulChecks < minChecksReq }
+                    val absentList = presentStudents.filter { it.manualStatus == "ABSENT" || (it.manualStatus == null && it.successfulChecks == 0) }
 
                     // Live Student List
                     LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(presentStudents, key = { it.studentId }) { student ->
-                            var menuExpanded by remember { mutableStateOf(false) }
-                            val reviewsViewModel: com.attendance.app.teacher.presentation.TeacherReviewsViewModel = koinViewModel()
-                            LaunchedEffect(Unit) {
-                                reviewsViewModel.loadPendingReviews(classId)
-                            }
-                            
-                            Card {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(student.name, style = MaterialTheme.typography.bodyLarge)
-                                        if (student.manualStatus != null) {
-                                            Text(
-                                                "Manually Marked: ${student.manualStatus}", 
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        } else if (student.successfulChecks > 0) {
-                                            val timeString = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(student.timeVerified))
-                                            Text("Synced at $timeString (Checks: ${student.successfulChecks})", style = MaterialTheme.typography.bodySmall)
-                                        } else {
-                                            Text("No checks yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                                        }
-                                    }
-                                    
-                                    if (student.manualStatus == null) {
-                                        Box {
-                                            IconButton(onClick = { menuExpanded = true }) {
-                                                Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                                            }
-                                            DropdownMenu(
-                                                expanded = menuExpanded,
-                                                onDismissRequest = { menuExpanded = false }
-                                            ) {
-                                                DropdownMenuItem(
-                                                    text = { Text("Mark Absent") },
-                                                    onClick = { 
-                                                        menuExpanded = false
-                                                        reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "ABSENT", "Teacher manual")
-                                                    }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text("Mark Present") },
-                                                    onClick = { 
-                                                        menuExpanded = false
-                                                        reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "PRESENT", "Teacher manual")
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        Icon(
-                                            if (student.manualStatus == "PRESENT") Icons.Default.CheckCircle else Icons.Default.Cancel, 
-                                            contentDescription = null, 
-                                            tint = if (student.manualStatus == "PRESENT") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            }
+                        val reviewsViewModel: com.attendance.app.teacher.presentation.TeacherReviewsViewModel = org.koin.java.KoinJavaComponent.getKoin().get()
+
+                        if (presentList.isNotEmpty()) {
+                            item { Text("Present (${presentList.size})", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp)) }
+                            items(presentList, key = { it.studentId }) { student -> StudentCard(student, reviewsViewModel, classId) }
+                        }
+                        
+                        if (reviewList.isNotEmpty()) {
+                            item { Text("Under Review (${reviewList.size})", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(top = 8.dp)) }
+                            items(reviewList, key = { it.studentId }) { student -> StudentCard(student, reviewsViewModel, classId) }
+                        }
+                        
+                        if (absentList.isNotEmpty()) {
+                            item { Text("Absent (${absentList.size})", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+                            items(absentList, key = { it.studentId }) { student -> StudentCard(student, reviewsViewModel, classId) }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun StudentCard(student: com.attendance.app.teacher.presentation.StudentPresentInfo, reviewsViewModel: com.attendance.app.teacher.presentation.TeacherReviewsViewModel, classId: String) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(student.name, style = MaterialTheme.typography.bodyLarge)
+                if (student.manualStatus != null) {
+                    Text(
+                        "Manually Marked: ${student.manualStatus}", 
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else if (student.successfulChecks > 0) {
+                    val timeString = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(student.timeVerified))
+                    Text("Synced at $timeString (Checks: ${student.successfulChecks})", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text("No checks yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            
+            if (student.manualStatus == null) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Mark Absent") },
+                            onClick = { 
+                                menuExpanded = false
+                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "ABSENT", "Teacher manual")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Mark Present") },
+                            onClick = { 
+                                menuExpanded = false
+                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "PRESENT", "Teacher manual")
+                            }
+                        )
+                    }
+                }
+            } else {
+                Icon(
+                    if (student.manualStatus == "PRESENT") Icons.Default.CheckCircle else Icons.Default.Cancel, 
+                    contentDescription = null, 
+                    tint = if (student.manualStatus == "PRESENT") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
             }
         }
     }
