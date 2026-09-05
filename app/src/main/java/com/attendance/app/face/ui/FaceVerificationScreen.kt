@@ -14,7 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-enum class Challenge { BLINK }
+enum class Challenge {
+    BLINK, SMILE
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,10 +40,9 @@ fun FaceVerificationScreen(
         cameraLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    // Auto-verify after brief delay once verified
     LaunchedEffect(isVerified) {
         if (isVerified) {
-            delay(1000) // Show "Verified!" for 1 second
+            delay(1000)
             onVerificationSuccess()
         }
     }
@@ -68,7 +69,7 @@ fun FaceVerificationScreen(
                         latestEmbeddingRef.value = embedding
                         if (!isFaceDetected) isFaceDetected = true
                         
-                                                val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
+                        val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
                         val isPending = prefs.getBoolean("face_approval_pending", false)
                         
                         if (isPending) {
@@ -76,7 +77,7 @@ fun FaceVerificationScreen(
                             if (isProcessing) isProcessing = false
                             return@CameraPreviewScreen
                         }
-
+                        
                         if (!isVerified) {
                             if (brightness < 25f) {
                                 verificationStatus = "Too dark! Move to better lighting."
@@ -98,31 +99,25 @@ fun FaceVerificationScreen(
                                 isProcessing = true
                                 verificationStatus = "Verifying..."
                                 
-                                val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
-                                val isPending = prefs.getBoolean("face_approval_pending", false)
                                 val storedStr = prefs.getString("registered_face_embedding", null)
                                 
-                                if (isPending) {
-                                    verificationStatus = "Face approval pending! Cannot mark attendance."
-                                    isProcessing = false
-                                    challengePassed = false
-                                } else if (storedStr != null) {
+                                if (storedStr != null) {
                                     try {
                                         val storedArray = org.json.JSONArray(storedStr)
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        if (similarity >= 0.75f) {
+                                        // 0.85 is a highly strict industrial threshold for MobileFaceNet
+                                        if (similarity >= 0.85f) {
                                             isVerified = true
                                         } else {
-                                            verificationStatus = "Face does not match registered profile"
+                                            verificationStatus = "Face does not match... (Score: " + String.format("%.2f", similarity) + ")"
                                             isProcessing = false
-                                            challengePassed = false
+                                            // DO NOT reset challengePassed! Let them continue adjusting without forcing them to re-blink.
                                         }
                                     } catch (e: Exception) {
                                         verificationStatus = "Error reading profile"
                                         isProcessing = false
-                                        challengePassed = false
                                     }
                                 } else {
                                     verificationStatus = "No face registered! Please register in Profile."
@@ -156,7 +151,7 @@ fun FaceVerificationScreen(
                     ) {
                         Card(modifier = Modifier.padding(bottom = 16.dp)) {
                             Text(
-                                text = if (isVerified) "âœ… Face Verified!" else verificationStatus, 
+                                text = if (isVerified) "✓ Face Verified!" else verificationStatus, 
                                 modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = if (isFaceDetected || isVerified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -184,11 +179,3 @@ fun FaceVerificationScreen(
         }
     }
 }
-
-
-
-
-
-
-
-
