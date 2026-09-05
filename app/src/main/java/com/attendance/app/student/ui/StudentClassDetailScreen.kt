@@ -14,6 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,12 +88,44 @@ fun StudentClassDetailScreen(
         }
     }
 
+    val isSessionActive = isScanning || scanStatus.contains("checked in") || scanStatus.contains("Active")
+    var showLeaveDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isSessionActive) {
+        showLeaveDialog = true
+    }
+
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            title = { Text("Leave Session?") },
+            text = { Text("You must scan your face to successfully check out of this attendance session. Leaving without checking out may mark you as absent.") },
+            confirmButton = {
+                Button(onClick = {
+                    showLeaveDialog = false
+                    attendanceViewModel.initiateCheckOut(classId)
+                }) {
+                    Text("Check Out")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(classItem?.name ?: "Class Details") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                                navigationIcon = {
+                    IconButton(onClick = { 
+                        if (isSessionActive) {
+                            showLeaveDialog = true
+                        } else {
+                            navController.popBackStack() 
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -161,6 +196,7 @@ fun StudentClassDetailScreen(
         }
     }
 }
+
 
 
 

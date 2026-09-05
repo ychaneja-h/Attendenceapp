@@ -248,7 +248,7 @@ fun StudentHomeScreen(
                     }
                 }
             }
-            }
+
         }
 
         if (showJoinDialog) {
@@ -299,6 +299,7 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
 
 
 
