@@ -161,7 +161,7 @@ class FaceAnalyzer(
             // Extract pixels directly from scaled 112x112 face
             scaledFace.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
 
-                Log.d("FaceAnalyzer", "DEBUG: Embedding computed, interpreter OK, first 5=" + embedding.take(5).toString())
+                Log.d("FaceAnalyzer", "DEBUG: Embedding computed, interpreter OK, first values captured");
 
             var embedding = FloatArray(EMBEDDING_SIZE)
 
