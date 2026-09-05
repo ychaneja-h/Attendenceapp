@@ -99,7 +99,9 @@ class FaceAnalyzer(
                     if (faces.isNotEmpty()) {
                         val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         largestFace?.let { face ->
-                            processFace(face, currentUpright, brightness)
+                            // Capture a reference to the bitmap while it's valid; process synchronously
+                            val bmpForCrop = uprightBitmap
+                            processFace(face, bmpForCrop, brightness)
                         } ?: onNoFaceDetected()
                     } else {
                         onNoFaceDetected()
@@ -109,7 +111,8 @@ class FaceAnalyzer(
                     onError("Face detection failed: ${e.message}")
                 }
                 .addOnCompleteListener {
-                    currentUpright.recycle()
+                    // Recycle only after processing is fully complete
+                    uprightBitmap?.recycle()
                     imageProxy.close()
                 }
         } catch (e: Exception) {
@@ -120,8 +123,13 @@ class FaceAnalyzer(
         }
     }
 
-    private fun processFace(face: Face, uprightBitmap: Bitmap, brightness: Float) {
+    private fun processFace(face: Face, uprightBitmap: Bitmap?, brightness: Float) {
         try {
+            if (uprightBitmap == null || uprightBitmap.isRecycled) {
+                Log.e("FaceAnalyzer", "uprightBitmap is null or recycled before crop")
+                onError("Bitmap recycled")
+                return
+            }
             val bbox = face.boundingBox
 
             // Expand bbox by 15% for facial context, clamped to upright bitmap dimensions
@@ -152,6 +160,8 @@ class FaceAnalyzer(
 
             // Extract pixels directly from scaled 112x112 face
             scaledFace.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
+
+                Log.d("FaceAnalyzer", "DEBUG: Embedding computed, interpreter OK, first 5=" + embedding.take(5).toString())
 
             var embedding = FloatArray(EMBEDDING_SIZE)
 
