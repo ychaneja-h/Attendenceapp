@@ -112,7 +112,7 @@ fun FaceVerificationScreen(
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        if (similarity > 0.73f) {
+                                        if (similarity >= 0.75f) {
                                             isVerified = true
                                         } else {
                                             verificationStatus = "Face does not match registered profile"
@@ -184,6 +184,7 @@ fun FaceVerificationScreen(
         }
     }
 }
+
 
 
 
