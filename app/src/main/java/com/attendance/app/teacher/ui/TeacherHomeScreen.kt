@@ -107,63 +107,74 @@ fun TeacherHomeScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Home - Live Attendance") }) },
+        topBar = { TopAppBar(title = { Text("Dashboard") }) },
         bottomBar = { TeacherBottomBar(navController, 0) }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            if (uiState is ProfileUiState.Success) {
-                val profile = (uiState as ProfileUiState.Success).profile
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            when (uiState) {
+                is ProfileUiState.Loading -> CircularProgressIndicator()
+                is ProfileUiState.Error -> Text("Failed to load profile.")
+                is ProfileUiState.Success -> {
+                    val profile = (uiState as ProfileUiState.Success).profile
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        if (profile.photoUrl != null) {
-                            AsyncImage(
-                                model = if (!profile.photoUrl.isNullOrEmpty()) { if (profile.photoUrl!!.startsWith("/")) java.io.File(profile.photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}" } else null,
-                                contentDescription = "Profile Photo",
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Person, 
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (!profile.photoUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = if (profile.photoUrl?.startsWith("/") == true) java.io.File(profile.photoUrl!!) else "${com.attendance.app.core.network.Constants.BASE_URL.replace("/api", "")}${profile.photoUrl}",
                                     contentDescription = "Profile Photo",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Person, 
+                                        contentDescription = "Profile Photo",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text(profile.email, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                            }
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
             }
 
-            Text("Your Classes", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Your Classes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (classes.isEmpty()) {
                 EmptyStateView(title = "No classes found", subtitle = "Go to Classes tab to create one")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(classes) { cls ->
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    items(classes, key = { it.id }) { cls ->
                         val isActive = activeClassId == cls.id
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -182,41 +193,46 @@ fun TeacherHomeScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(text = cls.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = "Code: ", style = MaterialTheme.typography.bodyMedium)
+                                        Text(text = "Code: ${cls.id.substring(0, 5)} - Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
                                     }
                                     if (isActive) {
                                         Button(
                                             onClick = { attendanceViewModel.stopAttendanceSession(context) },
-                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                            shape = RoundedCornerShape(12.dp)
                                         ) {
-                                            Text("Stop")
+                                            Text("Stop Session", fontWeight = FontWeight.Bold)
                                         }
                                     } else {
-                                                                                Button(onClick = {
-                                            selectedClassId = cls.id
-                                            selectedClassName = cls.name
-                                            val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                                arrayOf(
-                                                    android.Manifest.permission.BLUETOOTH_SCAN,
-                                                    android.Manifest.permission.BLUETOOTH_CONNECT,
-                                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                                    android.Manifest.permission.POST_NOTIFICATIONS
-                                                )
-                                            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                                arrayOf(
-                                                    android.Manifest.permission.BLUETOOTH_SCAN,
-                                                    android.Manifest.permission.BLUETOOTH_CONNECT,
-                                                    android.Manifest.permission.ACCESS_FINE_LOCATION
-                                                )
-                                            } else {
-                                                arrayOf(
-                                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                                                )
-                                            }
-                                            permissionLauncher.launch(perms)
-                                        }) {
-                                            Text("Start")
+                                        Button(
+                                            onClick = {
+                                                selectedClassId = cls.id
+                                                selectedClassName = cls.name
+                                                val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                                    arrayOf(
+                                                        android.Manifest.permission.BLUETOOTH_SCAN,
+                                                        android.Manifest.permission.BLUETOOTH_CONNECT,
+                                                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                        android.Manifest.permission.POST_NOTIFICATIONS
+                                                    )
+                                                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                                    arrayOf(
+                                                        android.Manifest.permission.BLUETOOTH_SCAN,
+                                                        android.Manifest.permission.BLUETOOTH_CONNECT,
+                                                        android.Manifest.permission.ACCESS_FINE_LOCATION
+                                                    )
+                                                } else {
+                                                    arrayOf(
+                                                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                        android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                                    )
+                                                }
+                                                permissionLauncher.launch(perms)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF2E7D32)),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text("Start Session", fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -224,7 +240,8 @@ fun TeacherHomeScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                     OutlinedButton(
                                         onClick = { navController.navigate(Screen.LiveSession(cls.id, startTime = attendanceViewModel.activeSessionStartTime.value)) },
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
                                         Text("View Active Session")
                                     }

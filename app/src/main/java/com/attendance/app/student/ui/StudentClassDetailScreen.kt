@@ -130,10 +130,16 @@ fun StudentClassDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { 
+IconButton(onClick = { 
                         val tokenManager = org.koin.java.KoinJavaComponent.getKoin().get<com.attendance.app.auth.data.TokenManager>()
                         val studentId = tokenManager.getUserId() ?: return@IconButton
-                        downloader.downloadStudentReport(classId, studentId, java.time.YearMonth.now().toString()) 
+                        val month = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            java.time.YearMonth.now().toString()
+                        } else {
+                            val now = java.util.Calendar.getInstance()
+                            "${now.get(java.util.Calendar.YEAR)}-${(now.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')}"
+                        }
+                        downloader.downloadStudentReport(classId, studentId, month) 
                     }) {
                         Icon(Icons.Default.Download, contentDescription = "Download Report")
                     }

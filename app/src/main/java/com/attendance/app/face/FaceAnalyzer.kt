@@ -108,13 +108,42 @@ class FaceAnalyzer(
 
     private fun processFace(face: Face, fullBitmap: Bitmap, brightness: Float) {
         try {
-            // Because ML Kit processed fullBitmap directly, the bounding box perfectly matches fullBitmap!
-            val matrix = Matrix()
-            matrix.postTranslate(-face.boundingBox.left.toFloat(), -face.boundingBox.top.toFloat())
-            matrix.postScale(INPUT_IMAGE_SIZE.toFloat() / face.boundingBox.width(), INPUT_IMAGE_SIZE.toFloat() / face.boundingBox.height())
+            val bbox = face.boundingBox
             
+            // Expand bbox by 20% for better context, but clamp to bitmap bounds
+            val expansion = 0.2f
+            val expandW = (bbox.width() * expansion).toInt()
+            val expandH = (bbox.height() * expansion).toInt()
+            
+            val left = (bbox.left - expandW).coerceAtLeast(0)
+            val top = (bbox.top - expandH).coerceAtLeast(0)
+            val right = (bbox.right + expandW).coerceAtMost(fullBitmap.width)
+            val bottom = (bbox.bottom + expandH).coerceAtMost(fullBitmap.height)
+            
+            val faceWidth = right - left
+            val faceHeight = bottom - top
+            
+            if (faceWidth <= 0 || faceHeight <= 0) {
+                Log.e("FaceAnalyzer", "Invalid face dimensions: ${faceWidth}x${faceHeight}")
+                onError("Invalid face crop")
+                return
+            }
+            
+            // Crop the face region directly from fullBitmap
+            val croppedFace = Bitmap.createBitmap(fullBitmap, left, top, faceWidth, faceHeight)
+            
+            // Use Matrix.setRectToRect for guaranteed correct mapping
+            val matrix = Matrix()
+            val srcRect = android.graphics.RectF(0f, 0f, croppedFace.width.toFloat(), croppedFace.height.toFloat())
+            val dstRect = android.graphics.RectF(0f, 0f, INPUT_IMAGE_SIZE.toFloat(), INPUT_IMAGE_SIZE.toFloat())
+            matrix.setRectToRect(srcRect, dstRect, Matrix.ScaleToFit.FILL)
+            
+            // Clear and draw the correctly scaled face
             faceCanvas.drawColor(android.graphics.Color.BLACK)
-            faceCanvas.drawBitmap(fullBitmap, matrix, null)
+            faceCanvas.drawBitmap(croppedFace, matrix, android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG))
+            
+            // Clean up temporary bitmap
+            croppedFace.recycle()
             
             val embedding = FloatArray(EMBEDDING_SIZE)
             
@@ -122,6 +151,7 @@ class FaceAnalyzer(
                 inputBuffer.rewind()
                 faceBitmap.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
                 
+                // Normalize pixel values for MobileFaceNet: (pixel - 127.5) / 128.0
                 for (pixelValue in intValues) {
                     val r = ((pixelValue shr 16) and 0xFF)
                     val g = ((pixelValue shr 8) and 0xFF)
@@ -135,7 +165,10 @@ class FaceAnalyzer(
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
                 interpreter?.run(inputBuffer, outputBuffer)
                 System.arraycopy(outputBuffer[0], 0, embedding, 0, EMBEDDING_SIZE)
+                
+                Log.d("FaceAnalyzer", "Embedding generated. First 5 values: ${embedding.take(5)}")
             } else {
+                Log.e("FaceAnalyzer", "TFLite interpreter is null!")
                 for (i in 0 until EMBEDDING_SIZE) {
                     embedding[i] = Math.random().toFloat()
                 }
