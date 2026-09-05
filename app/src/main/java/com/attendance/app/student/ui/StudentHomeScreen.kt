@@ -1,4 +1,4 @@
-package com.attendance.app.student.ui
+﻿package com.attendance.app.student.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -215,20 +215,39 @@ fun StudentHomeScreen(
                 EmptyStateView("You are not enrolled in any classes.", "Tap + to join a class")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    items(classes, key = { it.id }) { cls ->
+                                        items(classes, key = { it.id }) { cls ->
+                        val isPending = cls.memberStatus == "PENDING"
                         Card(
-                            onClick = { navController.navigate(Screen.StudentClassDetail(cls.id)) },
+                            onClick = { 
+                                if (!isPending) navController.navigate(Screen.StudentClassDetail(cls.id)) 
+                            },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(cls.name, style = MaterialTheme.typography.titleLarge)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(cls.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                    if (isPending) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surfaceVariant, 
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        ) {
+                                            Text("Pending", modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Code: ${cls.id.substring(0, 5)} � Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Code: ${cls.id.substring(0, 5)} - Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
                                 Text("Teacher: ${cls.teacherName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
                 }
+            }
             }
         }
 
@@ -280,6 +299,7 @@ fun StudentBottomBar(navController: NavController, selectedIndex: Int) {
         )
     }
 }
+
 
 
 
