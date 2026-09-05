@@ -15,7 +15,6 @@ import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 class FaceAnalyzer(
@@ -46,90 +45,110 @@ class FaceAnalyzer(
         try {
             val model = loadModelFile(context, "mobile_face_net.tflite")
             if (model != null) {
-                interpreter = Interpreter(model, Interpreter.Options().apply { numThreads = 4 })
+                val options = Interpreter.Options().apply {
+                    numThreads = 4
+                }
+                interpreter = Interpreter(model, options)
+                Log.d("FaceAnalyzer", "TFLite model loaded successfully")
+            } else {
+                Log.e("FaceAnalyzer", "TFLite model buffer is null")
             }
         } catch (e: Exception) {
-            Log.e("FaceAnalyzer", "Failed to load TFLite model", e)
+            Log.e("FaceAnalyzer", "Failed to initialize TFLite interpreter: ${e.message}", e)
         }
     }
 
-    private fun loadModelFile(context: Context, modelName: String): MappedByteBuffer? {
-        return try {
+    private fun loadModelFile(context: Context, modelName: String): ByteBuffer? {
+        // Method 1: Try openFd (memory mapped)
+        try {
             val fileDescriptor = context.assets.openFd(modelName)
             val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
             val fileChannel = inputStream.channel
-            fileChannel.map(FileChannel.MapMode.READ_ONLY, fileDescriptor.startOffset, fileDescriptor.declaredLength)
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, fileDescriptor.startOffset, fileDescriptor.declaredLength)
         } catch (e: Exception) {
+            Log.w("FaceAnalyzer", "openFd failed, falling back to direct byte buffer: ${e.message}")
+        }
+        
+        // Method 2: Direct byte stream (works even if asset is compressed by aapt)
+        return try {
+            val bytes = context.assets.open(modelName).use { it.readBytes() }
+            val buffer = ByteBuffer.allocateDirect(bytes.size).apply {
+                order(ByteOrder.nativeOrder())
+                put(bytes)
+                rewind()
+            }
+            Log.d("FaceAnalyzer", "Loaded model via direct stream (${bytes.size} bytes)")
+            buffer
+        } catch (e2: Exception) {
+            Log.e("FaceAnalyzer", "Failed to load model asset: ${e2.message}", e2)
             null
         }
     }
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        var uprightBitmap: Bitmap? = null
+        val mediaImage = imageProxy.image
+        if (mediaImage == null) {
+            imageProxy.close()
+            return
+        }
+
         try {
             val rotationDegrees = imageProxy.imageInfo.rotationDegrees
 
-            // Calculate brightness using the raw Y-plane buffer
+            // Calculate brightness from Y plane
             val yBuffer = imageProxy.planes[0].buffer
             val yBufferDup = yBuffer.duplicate()
             val yData = ByteArray(yBufferDup.remaining())
             yBufferDup.get(yData)
             val brightness = yData.map { it.toInt() and 0xFF }.average().toFloat()
 
-            // Convert to Bitmap
-            val rawBitmap = imageProxy.toBitmap()
+            // Pass native media image to ML Kit with rotation
+            val inputImage = InputImage.fromMediaImage(mediaImage, rotationDegrees)
 
-            // Rotate bitmap to ensure it is upright (matches screen/face orientation)
-            uprightBitmap = if (rotationDegrees != 0) {
-                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-                val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
-                rawBitmap.recycle()
-                rotated
-            } else {
-                rawBitmap
-            }
-
-            // Pass upright bitmap to ML Kit (rotation is 0 because bitmap is already rotated upright)
-            val image = InputImage.fromBitmap(uprightBitmap, 0)
-            val currentUpright = uprightBitmap
-
-            detector.process(image)
+            detector.process(inputImage)
                 .addOnSuccessListener { faces ->
                     if (faces.isNotEmpty()) {
                         val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                        largestFace?.let { face ->
-                            // Capture a reference to the bitmap while it's valid; process synchronously
-                            val bmpForCrop = uprightBitmap
-                            processFace(face, bmpForCrop, brightness)
-                        } ?: onNoFaceDetected()
+                        if (largestFace != null) {
+                            processFace(largestFace, imageProxy, rotationDegrees, brightness)
+                        } else {
+                            onNoFaceDetected()
+                        }
                     } else {
                         onNoFaceDetected()
                     }
                 }
                 .addOnFailureListener { e ->
+                    Log.e("FaceAnalyzer", "Face detection failed: ${e.message}")
                     onError("Face detection failed: ${e.message}")
                 }
                 .addOnCompleteListener {
-                    // Recycle only after processing is fully complete
-                    uprightBitmap?.recycle()
                     imageProxy.close()
                 }
         } catch (e: Exception) {
-            Log.e("FaceAnalyzer", "Error in analyze", e)
+            Log.e("FaceAnalyzer", "Error in analyze: ${e.message}", e)
             onError("Error processing frame")
-            uprightBitmap?.recycle()
             imageProxy.close()
         }
     }
 
-    private fun processFace(face: Face, uprightBitmap: Bitmap?, brightness: Float) {
+    private fun processFace(face: Face, imageProxy: ImageProxy, rotationDegrees: Int, brightness: Float) {
+        var rawBitmap: Bitmap? = null
+        var uprightBitmap: Bitmap? = null
+        var croppedFace: Bitmap? = null
+        var scaledFace: Bitmap? = null
+
         try {
-            if (uprightBitmap == null || uprightBitmap.isRecycled) {
-                Log.e("FaceAnalyzer", "uprightBitmap is null or recycled before crop")
-                onError("Bitmap recycled")
-                return
+            // Convert imageProxy to bitmap and rotate to match ML Kit coordinate space
+            rawBitmap = imageProxy.toBitmap()
+            uprightBitmap = if (rotationDegrees != 0) {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+            } else {
+                rawBitmap
             }
+
             val bbox = face.boundingBox
 
             // Expand bbox by 15% for facial context, clamped to upright bitmap dimensions
@@ -146,26 +165,24 @@ class FaceAnalyzer(
             val faceHeight = bottom - top
 
             if (faceWidth <= 10 || faceHeight <= 10) {
-                Log.e("FaceAnalyzer", "Invalid face dimensions: ${faceWidth}x${faceHeight}")
-                onError("Invalid face crop")
+                Log.w("FaceAnalyzer", "Face bbox too small: ${faceWidth}x${faceHeight}")
+                onNoFaceDetected()
                 return
             }
 
             // Crop face directly from upright bitmap
-            val croppedFace = Bitmap.createBitmap(uprightBitmap, left, top, faceWidth, faceHeight)
+            croppedFace = Bitmap.createBitmap(uprightBitmap, left, top, faceWidth, faceHeight)
 
             // Scale to 112x112 using bilinear filtering
-            val scaledFace = Bitmap.createScaledBitmap(croppedFace, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true)
-            croppedFace.recycle()
+            scaledFace = Bitmap.createScaledBitmap(croppedFace, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true)
 
             // Extract pixels directly from scaled 112x112 face
             scaledFace.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
 
-                Log.d("FaceAnalyzer", "DEBUG: Embedding computed, interpreter OK, first values captured");
-
             var embedding = FloatArray(EMBEDDING_SIZE)
 
-            if (interpreter != null) {
+            val currentInterpreter = interpreter
+            if (currentInterpreter != null) {
                 inputBuffer.rewind()
 
                 // Normalize pixel values for MobileFaceNet: (pixel - 127.5) / 128.0
@@ -180,32 +197,39 @@ class FaceAnalyzer(
                 }
 
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
-                interpreter?.run(inputBuffer, outputBuffer)
+                currentInterpreter.run(inputBuffer, outputBuffer)
                 
                 // L2-normalize the embedding vector
                 embedding = FaceMath.l2Normalize(outputBuffer[0])
-
-                Log.d("FaceAnalyzer", "Embedding generated. First 5 values: ${embedding.take(5)}")
             } else {
-                Log.e("FaceAnalyzer", "TFLite interpreter is null!")
-                for (i in 0 until EMBEDDING_SIZE) {
-                    embedding[i] = 0.0f
-                }
+                Log.e("FaceAnalyzer", "TFLite interpreter is null during face processing")
             }
 
-            // Pass a copy of the faceBitmap so UI can render it safely
+            // Pass face data to UI callback
+            val previewBitmap = Bitmap.createBitmap(scaledFace)
             onFaceDetected(
                 embedding, 
-                Bitmap.createBitmap(scaledFace), 
+                previewBitmap, 
                 face.leftEyeOpenProbability, 
                 face.rightEyeOpenProbability, 
                 face.smilingProbability, 
                 brightness
             )
-            scaledFace.recycle()
         } catch (e: Exception) {
-            Log.e("FaceAnalyzer", "Error extracting face embedding", e)
+            Log.e("FaceAnalyzer", "Error in processFace: ${e.message}", e)
             onError("Error extracting face")
+        } finally {
+            try {
+                croppedFace?.recycle()
+                scaledFace?.recycle()
+                if (uprightBitmap !== rawBitmap) {
+                    uprightBitmap?.recycle()
+                }
+                rawBitmap?.recycle()
+            } catch (e: Exception) {
+                // Ignore cleanup errors
+            }
         }
     }
 }
+
