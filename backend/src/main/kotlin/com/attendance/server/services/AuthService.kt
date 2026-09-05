@@ -193,14 +193,14 @@ object AuthService {
 
             var user: org.jetbrains.exposed.sql.ResultRow? = null
             for (u in users) {
-                println("Checking user: " + u[Users.id] + " with hash " + u[Users.passwordHash])
+
                 val result = at.favre.lib.crypto.bcrypt.BCrypt.verifyer().verify(request.password.toCharArray(), u[Users.passwordHash])
                 if (result.verified) {
-                    println("Password verified for user: " + u[Users.id])
+
                     user = u
                     break
                 } else {
-                    println("Password NOT verified for user: " + u[Users.id])
+
                 }
             }
             if (user == null) {
@@ -254,14 +254,14 @@ object AuthService {
 
             var user: org.jetbrains.exposed.sql.ResultRow? = null
             for (u in users) {
-                println("Checking user: " + u[Users.id] + " with hash " + u[Users.passwordHash])
+
                 val result = at.favre.lib.crypto.bcrypt.BCrypt.verifyer().verify(request.password.toCharArray(), u[Users.passwordHash])
                 if (result.verified) {
-                    println("Password verified for user: " + u[Users.id])
+
                     user = u
                     break
                 } else {
-                    println("Password NOT verified for user: " + u[Users.id])
+
                 }
             }
             if (user == null) {
@@ -323,6 +323,7 @@ object AuthService {
         }
     }
 }
+
 
 
 
