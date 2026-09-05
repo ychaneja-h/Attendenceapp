@@ -42,3 +42,13 @@
 -keep class androidx.compose.** { *; }
 -keep class androidx.navigation.** { *; }
 -keep class com.attendance.app.** { *; }
+
+# OkHttp
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# Ktor extra
+-keep class io.ktor.client.engine.okhttp.** { *; }
+-keep class io.ktor.client.plugins.** { *; }
