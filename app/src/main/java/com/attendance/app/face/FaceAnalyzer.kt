@@ -68,42 +68,47 @@ class FaceAnalyzer(
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        try {
+            // Calculate brightness using the raw Y-plane buffer
+            val yBuffer = imageProxy.planes[0].buffer
+            val yBufferDup = yBuffer.duplicate()
+            val yData = ByteArray(yBufferDup.remaining())
+            yBufferDup.get(yData)
+            val brightness = yData.map { it.toInt() and 0xFF }.average().toFloat()
+
+            // Convert to Bitmap FIRST. CameraX handles rotation internally for this bitmap.
+            val fullBitmap = imageProxy.toBitmap()
+            
+            // Pass the exact same bitmap to ML Kit (rotation = 0 because it's already rotated)
+            val image = InputImage.fromBitmap(fullBitmap, 0)
             
             detector.process(image)
                 .addOnSuccessListener { faces ->
                     if (faces.isNotEmpty()) {
                         val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         largestFace?.let { face ->
-                            processFace(face, imageProxy, mediaImage)
-                        }
+                            processFace(face, fullBitmap, brightness)
+                        } ?: onNoFaceDetected()
                     } else {
                         onNoFaceDetected()
-                        imageProxy.close()
                     }
                 }
                 .addOnFailureListener { e ->
                     onError("Face detection failed: ${e.message}")
+                }
+                .addOnCompleteListener {
                     imageProxy.close()
                 }
-        } else {
+        } catch (e: Exception) {
+            Log.e("FaceAnalyzer", "Error in analyze", e)
+            onError("Error processing frame")
             imageProxy.close()
         }
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun processFace(face: Face, imageProxy: ImageProxy, mediaImage: android.media.Image) {
+    private fun processFace(face: Face, fullBitmap: Bitmap, brightness: Float) {
         try {
-            val yBuffer = imageProxy.planes[0].buffer
-            val yBufferDup = yBuffer.duplicate()
-            val yData = ByteArray(yBufferDup.remaining())
-            yBufferDup.get(yData)
-            val brightness = yData.map { it.toInt() and 0xFF }.average().toFloat()
-            
-            val fullBitmap = imageProxy.toBitmap()
-            
+            // Because ML Kit processed fullBitmap directly, the bounding box perfectly matches fullBitmap!
             val matrix = Matrix()
             matrix.postTranslate(-face.boundingBox.left.toFloat(), -face.boundingBox.top.toFloat())
             matrix.postScale(INPUT_IMAGE_SIZE.toFloat() / face.boundingBox.width(), INPUT_IMAGE_SIZE.toFloat() / face.boundingBox.height())
@@ -136,12 +141,11 @@ class FaceAnalyzer(
                 }
             }
             
+            // Pass a copy of the faceBitmap so UI can render it safely
             onFaceDetected(embedding, Bitmap.createBitmap(faceBitmap), face.leftEyeOpenProbability, face.rightEyeOpenProbability, face.smilingProbability, brightness)
         } catch (e: Exception) {
-            Log.e("FaceAnalyzer", "Error processing face", e)
-            onError("Error processing face")
-        } finally {
-            imageProxy.close()
+            Log.e("FaceAnalyzer", "Error extracting face embedding", e)
+            onError("Error extracting face")
         }
     }
 }
