@@ -114,8 +114,8 @@ fun FaceVerificationScreen(
                                         val normalizedStored = com.attendance.app.face.FaceMath.l2Normalize(stored)
                                         val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(normalizedCurrent, normalizedStored)
                                         
-                                        // Threshold 0.65 with 2 consecutive matches for fast and secure verification
-                                        if (similarity >= 0.65f) {
+                                        // Threshold 0.60 with 2 consecutive matches for fast and secure verification
+                                        if (similarity >= 0.60f) {
                                             consecutiveMatches++
                                             if (consecutiveMatches >= 2) {
                                                 isVerified = true
