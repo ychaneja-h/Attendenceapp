@@ -61,6 +61,7 @@ fun FaceVerificationScreen(
             if (hasCameraPermission) {
                 val latestEmbeddingRef = remember { mutableStateOf<FloatArray?>(null) }
                 var isFaceDetected by remember { mutableStateOf(false) }
+                var blinkDetected by remember { mutableStateOf(false) }
                 var challengePassed by remember { mutableStateOf(false) }
                 var consecutiveMatches by remember { mutableIntStateOf(0) }
                 val currentChallenge = remember { Challenge.entries.random() }
@@ -80,17 +81,24 @@ fun FaceVerificationScreen(
                         }
                         
                         if (!isVerified) {
-                            if (brightness < 25f) {
+                            if (brightness < 20f) {
                                 verificationStatus = "Too dark! Move to better lighting."
                             } else if (!challengePassed) {
                                 if (currentChallenge == Challenge.BLINK) {
-                                    verificationStatus = "Please BLINK..."
-                                    if (leftEyeOpen != null && rightEyeOpen != null && leftEyeOpen < 0.2f && rightEyeOpen < 0.2f) {
-                                        challengePassed = true
+                                    if (!blinkDetected) {
+                                        verificationStatus = "Please BLINK..."
+                                        if (leftEyeOpen != null && rightEyeOpen != null && leftEyeOpen < 0.25f && rightEyeOpen < 0.25f) {
+                                            blinkDetected = true
+                                        }
+                                    } else {
+                                        // Wait for eyes to open again for clean embedding
+                                        if (leftEyeOpen != null && rightEyeOpen != null && leftEyeOpen > 0.5f && rightEyeOpen > 0.5f) {
+                                            challengePassed = true
+                                        }
                                     }
                                 } else {
                                     verificationStatus = "Please SMILE..."
-                                    if (smiling != null && smiling > 0.8f) {
+                                    if (smiling != null && smiling > 0.60f) {
                                         challengePassed = true
                                     }
                                 }
@@ -106,20 +114,23 @@ fun FaceVerificationScreen(
                                     try {
                                         val storedArray = org.json.JSONArray(storedStr)
                                         val stored = FloatArray(storedArray.length()) { i -> storedArray.getDouble(i).toFloat() }
-                                        val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(embedding, stored)
                                         
-                                        // 0.75 threshold with 3 consecutive frames We require 3 consecutive frames to pass to eliminate spikes.
-                                        if (similarity >= 0.75f) {
+                                        val normalizedCurrent = com.attendance.app.face.FaceMath.l2Normalize(embedding)
+                                        val normalizedStored = com.attendance.app.face.FaceMath.l2Normalize(stored)
+                                        val similarity = com.attendance.app.face.FaceMath.cosineSimilarity(normalizedCurrent, normalizedStored)
+                                        
+                                        // Threshold 0.70 with 2 consecutive matches for fast and secure verification
+                                        if (similarity >= 0.70f) {
                                             consecutiveMatches++
-                                            if (consecutiveMatches >= 3) {
+                                            if (consecutiveMatches >= 2) {
                                                 isVerified = true
                                             } else {
-                                                verificationStatus = "Hold still... ($consecutiveMatches/3)"
+                                                verificationStatus = "Hold still..."
                                                 isProcessing = false
                                             }
                                         } else {
                                             consecutiveMatches = 0
-                                            verificationStatus = "Face does not match... (Score: " + String.format("%.2f", similarity) + ")"
+                                            verificationStatus = "Face does not match (${String.format("%.0f", (similarity * 100).coerceAtLeast(0f))}%)"
                                             isProcessing = false
                                         }
                                     } catch (e: Exception) {

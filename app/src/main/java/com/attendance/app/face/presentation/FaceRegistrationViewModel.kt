@@ -22,15 +22,18 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
     val registrationState: StateFlow<FaceRegState> = _registrationState.asStateFlow()
 
     fun onFaceDetected(embedding: FloatArray, context: Context) {
-        // Only allow capture when Idle â€” prevents looping
+        // Only allow capture when Idle — prevents looping
         if (_registrationState.value != FaceRegState.Idle) return
         
         _registrationState.value = FaceRegState.Processing
         
         viewModelScope.launch {
             try {
-                // Save locally as PENDING so it doesn't overwrite their active face until approved
-                val embeddingJson = org.json.JSONArray(embedding.toList()).toString()
+                // Ensure embedding is L2-normalized
+                val normalizedEmbedding = com.attendance.app.face.FaceMath.l2Normalize(embedding)
+                val embeddingJson = org.json.JSONArray(normalizedEmbedding.toList()).toString()
+                
+                // Save locally as PENDING so it doesn't overwrite active face until approved
                 val prefs = context.getSharedPreferences("attendance_prefs", Context.MODE_PRIVATE)
                 prefs.edit()
                     .putString("pending_face_embedding", embeddingJson)
@@ -38,10 +41,9 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
                     .apply()
                 
                 // Then try to send to server for teacher approval
-                val embeddingJsonString = org.json.JSONArray(embedding.toList()).toString()
-                                val response = httpClient.post("${Constants.BASE_URL}/requests/face") {
+                val response = httpClient.post("${Constants.BASE_URL}/requests/face") {
                     contentType(ContentType.Application.Json)
-                    setBody(mapOf("faceEmbeddingJSON" to embeddingJsonString))
+                    setBody(mapOf("faceEmbeddingJSON" to embeddingJson))
                 }
                 if (response.status.isSuccess()) {
                     val respText = response.bodyAsText()

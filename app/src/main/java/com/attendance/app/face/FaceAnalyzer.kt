@@ -68,7 +68,10 @@ class FaceAnalyzer(
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
+        var uprightBitmap: Bitmap? = null
         try {
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+
             // Calculate brightness using the raw Y-plane buffer
             val yBuffer = imageProxy.planes[0].buffer
             val yBufferDup = yBuffer.duplicate()
@@ -76,18 +79,29 @@ class FaceAnalyzer(
             yBufferDup.get(yData)
             val brightness = yData.map { it.toInt() and 0xFF }.average().toFloat()
 
-            // Convert to Bitmap FIRST. CameraX handles rotation internally for this bitmap.
-            val fullBitmap = imageProxy.toBitmap()
-            
-            // Pass the exact same bitmap to ML Kit (rotation = 0 because it's already rotated)
-            val image = InputImage.fromBitmap(fullBitmap, 0)
-            
+            // Convert to Bitmap
+            val rawBitmap = imageProxy.toBitmap()
+
+            // Rotate bitmap to ensure it is upright (matches screen/face orientation)
+            uprightBitmap = if (rotationDegrees != 0) {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                rawBitmap.recycle()
+                rotated
+            } else {
+                rawBitmap
+            }
+
+            // Pass upright bitmap to ML Kit (rotation is 0 because bitmap is already rotated upright)
+            val image = InputImage.fromBitmap(uprightBitmap, 0)
+            val currentUpright = uprightBitmap
+
             detector.process(image)
                 .addOnSuccessListener { faces ->
                     if (faces.isNotEmpty()) {
                         val largestFace = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         largestFace?.let { face ->
-                            processFace(face, fullBitmap, brightness)
+                            processFace(face, currentUpright, brightness)
                         } ?: onNoFaceDetected()
                     } else {
                         onNoFaceDetected()
@@ -97,85 +111,92 @@ class FaceAnalyzer(
                     onError("Face detection failed: ${e.message}")
                 }
                 .addOnCompleteListener {
+                    currentUpright.recycle()
                     imageProxy.close()
                 }
         } catch (e: Exception) {
             Log.e("FaceAnalyzer", "Error in analyze", e)
             onError("Error processing frame")
+            uprightBitmap?.recycle()
             imageProxy.close()
         }
     }
 
-    private fun processFace(face: Face, fullBitmap: Bitmap, brightness: Float) {
+    private fun processFace(face: Face, uprightBitmap: Bitmap, brightness: Float) {
         try {
             val bbox = face.boundingBox
-            
-            // Expand bbox by 20% for better context, but clamp to bitmap bounds
-            val expansion = 0.2f
+
+            // Expand bbox by 15% for facial context, clamped to upright bitmap dimensions
+            val expansion = 0.15f
             val expandW = (bbox.width() * expansion).toInt()
             val expandH = (bbox.height() * expansion).toInt()
-            
-            val left = (bbox.left - expandW).coerceAtLeast(0)
-            val top = (bbox.top - expandH).coerceAtLeast(0)
-            val right = (bbox.right + expandW).coerceAtMost(fullBitmap.width)
-            val bottom = (bbox.bottom + expandH).coerceAtMost(fullBitmap.height)
-            
+
+            val left = (bbox.left - expandW).coerceIn(0, uprightBitmap.width - 1)
+            val top = (bbox.top - expandH).coerceIn(0, uprightBitmap.height - 1)
+            val right = (bbox.right + expandW).coerceIn(left + 1, uprightBitmap.width)
+            val bottom = (bbox.bottom + expandH).coerceIn(top + 1, uprightBitmap.height)
+
             val faceWidth = right - left
             val faceHeight = bottom - top
-            
-            if (faceWidth <= 0 || faceHeight <= 0) {
+
+            if (faceWidth <= 10 || faceHeight <= 10) {
                 Log.e("FaceAnalyzer", "Invalid face dimensions: ${faceWidth}x${faceHeight}")
                 onError("Invalid face crop")
                 return
             }
-            
-            // Crop the face region directly from fullBitmap
-            val croppedFace = Bitmap.createBitmap(fullBitmap, left, top, faceWidth, faceHeight)
-            
-            // Use Matrix.setRectToRect for guaranteed correct mapping
-            val matrix = Matrix()
-            val srcRect = android.graphics.RectF(0f, 0f, croppedFace.width.toFloat(), croppedFace.height.toFloat())
-            val dstRect = android.graphics.RectF(0f, 0f, INPUT_IMAGE_SIZE.toFloat(), INPUT_IMAGE_SIZE.toFloat())
-            matrix.setRectToRect(srcRect, dstRect, Matrix.ScaleToFit.FILL)
-            
-            // Clear and draw the correctly scaled face
-            faceCanvas.drawColor(android.graphics.Color.BLACK)
-            faceCanvas.drawBitmap(croppedFace, matrix, android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG))
-            
-            // Clean up temporary bitmap
+
+            // Crop face directly from upright bitmap
+            val croppedFace = Bitmap.createBitmap(uprightBitmap, left, top, faceWidth, faceHeight)
+
+            // Scale to 112x112 using bilinear filtering
+            val scaledFace = Bitmap.createScaledBitmap(croppedFace, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true)
             croppedFace.recycle()
-            
-            val embedding = FloatArray(EMBEDDING_SIZE)
-            
+
+            // Draw to faceCanvas
+            faceCanvas.drawColor(android.graphics.Color.BLACK)
+            faceCanvas.drawBitmap(scaledFace, 0f, 0f, null)
+
+            var embedding = FloatArray(EMBEDDING_SIZE)
+
             if (interpreter != null) {
                 inputBuffer.rewind()
                 faceBitmap.getPixels(intValues, 0, INPUT_IMAGE_SIZE, 0, 0, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
-                
+
                 // Normalize pixel values for MobileFaceNet: (pixel - 127.5) / 128.0
                 for (pixelValue in intValues) {
                     val r = ((pixelValue shr 16) and 0xFF)
                     val g = ((pixelValue shr 8) and 0xFF)
                     val b = (pixelValue and 0xFF)
-                    
+
                     inputBuffer.putFloat((r - 127.5f) / 128.0f)
                     inputBuffer.putFloat((g - 127.5f) / 128.0f)
                     inputBuffer.putFloat((b - 127.5f) / 128.0f)
                 }
-                
+
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
                 interpreter?.run(inputBuffer, outputBuffer)
-                System.arraycopy(outputBuffer[0], 0, embedding, 0, EMBEDDING_SIZE)
                 
+                // L2-normalize the embedding vector
+                embedding = FaceMath.l2Normalize(outputBuffer[0])
+
                 Log.d("FaceAnalyzer", "Embedding generated. First 5 values: ${embedding.take(5)}")
             } else {
                 Log.e("FaceAnalyzer", "TFLite interpreter is null!")
                 for (i in 0 until EMBEDDING_SIZE) {
-                    embedding[i] = Math.random().toFloat()
+                    embedding[i] = 0.0f
                 }
             }
-            
+
             // Pass a copy of the faceBitmap so UI can render it safely
-            onFaceDetected(embedding, Bitmap.createBitmap(faceBitmap), face.leftEyeOpenProbability, face.rightEyeOpenProbability, face.smilingProbability, brightness)
+            onFaceDetected(
+                embedding, 
+                Bitmap.createBitmap(faceBitmap), 
+                face.leftEyeOpenProbability, 
+                face.rightEyeOpenProbability, 
+                face.smilingProbability, 
+                brightness
+            )
+            scaledFace.recycle()
         } catch (e: Exception) {
             Log.e("FaceAnalyzer", "Error extracting face embedding", e)
             onError("Error extracting face")
