@@ -46,33 +46,17 @@ An enterprise-grade, secure, and offline-capable Smart Attendance application bu
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Download & Installation
 
-### Prerequisites
-- Android Studio Iguana (or newer)
-- Minimum SDK: 24 (Android 7.0)
-- Target SDK: 34 (Android 14)
+This repository acts as the release hub for the Smart Attendance System.
 
-### Building the Project
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/ychaneja-h/Attendenceapp.git
-   ```
-2. Open the project in Android Studio.
-3. Build the project using Gradle:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-
-### Backend Setup
-The project includes a Ktor-based backend service located in the `/backend` directory.
-- Run the server via `./gradlew :backend:run`.
+### How to Install
+1. Navigate to the [Releases](../../releases) section of this repository.
+2. Download the latest `app-release.apk` file to your Android device.
+3. Open the downloaded file to install it (you may need to allow installation from unknown sources in your device settings).
+4. Launch the app and log in with your credentials.
 
 ---
-
-## 📦 Releases
-
-Stable builds (APKs) can be found in the [Releases](../../releases) section of this repository.
 
 ---
 
