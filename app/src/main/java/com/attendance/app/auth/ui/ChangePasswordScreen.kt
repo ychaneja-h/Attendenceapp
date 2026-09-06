@@ -1,4 +1,4 @@
-﻿package com.attendance.app.auth.ui
+package com.attendance.app.auth.ui
 
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,7 +73,7 @@ fun ChangePasswordScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                                        val role = viewModel.getRole()
+                    val role = viewModel.getRole()
                     val subtitle = if (role == "STUDENT") "You must verify your face to reset your password." else "Enter your new password below."
                     Text(
                         subtitle,
@@ -82,8 +82,6 @@ fun ChangePasswordScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    
-                    
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
@@ -130,8 +128,8 @@ fun ChangePasswordScreen(
                     var isFaceDetected by remember { mutableStateOf(false) }
                     
                     CameraPreviewScreen(
-                        onFaceDetected = { embedding, _, _, _, _, _ ->
-                            latestEmbeddingRef.value = embedding
+                        onFaceDetected = { result ->
+                            latestEmbeddingRef.value = result.embedding
                             if (!isFaceDetected) isFaceDetected = true
                         },
                         onNoFaceDetected = {
@@ -195,6 +193,3 @@ fun ChangePasswordScreen(
         }
     }
 }
-
-
-

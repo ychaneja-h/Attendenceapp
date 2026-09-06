@@ -1,4 +1,4 @@
-﻿package com.attendance.app.student.ui
+package com.attendance.app.student.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -216,7 +216,7 @@ fun StudentHomeScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                         items(classes, key = { it.id }) { cls ->
-                        val isPending = cls.memberStatus == "PENDING"
+                        val isPending = cls.memberStatus == "PENDING_APPROVAL"
                         Card(
                             onClick = { 
                                 if (!isPending) navController.navigate(Screen.StudentClassDetail(cls.id)) 

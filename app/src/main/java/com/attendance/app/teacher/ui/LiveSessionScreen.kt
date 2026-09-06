@@ -1,4 +1,4 @@
-﻿package com.attendance.app.teacher.ui
+package com.attendance.app.teacher.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -184,14 +184,14 @@ fun StudentCard(student: com.attendance.app.teacher.presentation.StudentPresentI
                             text = { Text("Mark Absent") },
                             onClick = { 
                                 menuExpanded = false
-                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "ABSENT", "Teacher manual")
+                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "ABSENT", "Teacher manual", classId)
                             }
                         )
                         DropdownMenuItem(
                             text = { Text("Mark Present") },
                             onClick = { 
                                 menuExpanded = false
-                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "PRESENT", "Teacher manual")
+                                reviewsViewModel.overrideAttendance(java.util.UUID.randomUUID().toString(), student.studentId, "PRESENT", "Teacher manual", classId)
                             }
                         )
                     }

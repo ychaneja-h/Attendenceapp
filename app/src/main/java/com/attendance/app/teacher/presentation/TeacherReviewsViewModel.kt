@@ -1,4 +1,4 @@
-﻿package com.attendance.app.teacher.presentation
+package com.attendance.app.teacher.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -54,8 +54,8 @@ class TeacherReviewsViewModel(
         }
     }
 
-        fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String) {
-        val cid = currentClassId ?: return
+        fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String, classId: String? = null) {
+        val cid = classId ?: currentClassId ?: return
         viewModelScope.launch {
             try {
                 attendanceDao.insertRecord(
@@ -65,7 +65,7 @@ class TeacherReviewsViewModel(
                         studentId = studentId,
                         timestamp = System.currentTimeMillis(),
                         isPresent = newStatus == "PRESENT",
-                        method = "MANUAL_",
+                        method = "MANUAL_$newStatus",
                         syncStatus = "PENDING"
                     )
                 )
