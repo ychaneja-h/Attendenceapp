@@ -92,24 +92,31 @@ fun StudentClassDetailScreen(
     var showLeaveDialog by remember { mutableStateOf(false) }
 
     BackHandler(enabled = isSessionActive) {
+        // Force face verification dialog; do not allow navigation away without checkout
         showLeaveDialog = true
+        // Block system back: don't call popBackStack here; user must use dialog
     }
 
     if (showLeaveDialog) {
         AlertDialog(
-            onDismissRequest = { showLeaveDialog = false },
+            onDismissRequest = { /* Block dismiss unless verified out */ },
             title = { Text("Leave Session?") },
-            text = { Text("You must scan your face to successfully check out of this attendance session. Leaving without checking out may mark you as absent.") },
+            text = { Text("You must scan your face to check out. You CANNOT leave this session without face verification.") },
             confirmButton = {
                 Button(onClick = {
                     showLeaveDialog = false
                     attendanceViewModel.initiateCheckOut(classId)
                 }) {
-                    Text("Check Out")
+                    Text("Scan Face & Check Out")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLeaveDialog = false }) { Text("Cancel") }
+                // Do NOT provide cancel - they must verify to leave
+                TextButton(onClick = {
+                    Toast.makeText(context, "Please verify your face to leave the session.", Toast.LENGTH_LONG).show()
+                }) {
+                    Text("Cancel (Not Allowed)")
+                }
             }
         )
     }

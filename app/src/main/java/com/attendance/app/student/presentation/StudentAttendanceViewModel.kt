@@ -44,9 +44,10 @@ class StudentAttendanceViewModel(
     
     private var pulseJob: Job? = null
     
-    private var pendingCheckOut = false
-    
-    private fun getSharedPrefs(context: Context) = context.getSharedPreferences("attendance_prefs", Context.MODE_PRIVATE)
+private var pendingCheckOut = false
+private var faceScanOnExitDone = false // Tracks if student verified face before leaving
+
+private fun getSharedPrefs(context: Context) = context.getSharedPreferences("attendance_prefs", Context.MODE_PRIVATE)
 
     fun checkIn(context: Context, classId: String) {
         val prefs = getSharedPrefs(context)
@@ -71,6 +72,8 @@ class StudentAttendanceViewModel(
                 // Lock to this class
                 getSharedPrefs(context).edit().putString("active_class_id", classId).apply()
                 
+                faceScanOnExitDone = false // Reset for new session
+                
                 val record = AttendanceRecordEntity(
                     id = UUID.randomUUID().toString(),
                     classId = classId,
@@ -91,6 +94,13 @@ class StudentAttendanceViewModel(
                 
                 startPulseAndPoll(context, classId, studentId)
             } else {
+                // Check out: require face scan before allowing exit
+                if (!pendingCheckOut && !faceScanOnExitDone) {
+                    faceScanOnExitDone = true
+                    _scanStatus.value = "Please verify face before leaving session"
+                    return@launch
+                }
+                
                 val record = AttendanceRecordEntity(
                     id = UUID.randomUUID().toString(),
                     classId = classId,
@@ -110,7 +120,27 @@ class StudentAttendanceViewModel(
                 getSharedPrefs(context).edit().remove("active_class_id").apply()
                 BleAdvertiserService.stop(context)
                 
-                _scanStatus.value = "Session Left"
+                // If user left session without face scan exit, insert UNDER_REVIEW record
+                if (!faceScanOnExitDone) {
+                    val reviewRecord = AttendanceRecordEntity(
+                        id = UUID.randomUUID().toString(),
+                        classId = classId,
+                        studentId = studentId,
+                        timestamp = System.currentTimeMillis(),
+                        isPresent = false,
+                        method = "UNDER_REVIEW_NO_EXIT_SCAN",
+                        syncStatus = "PENDING"
+                    )
+                    attendanceDao.insertRecord(reviewRecord)
+                    
+                    val workRequestUnderReview = androidx.work.OneTimeWorkRequestBuilder<com.attendance.app.core.data.sync.AttendanceSyncWorker>().build()
+                    androidx.work.WorkManager.getInstance(context).enqueue(workRequestUnderReview)
+                    
+                    _scanStatus.value = "Under Review: Left without face verification"
+                } else {
+                    _scanStatus.value = "Session Left"
+                }
+                
                 _todayStatus.value = null
                 _attendanceAction.value = AttendanceAction.Completed
             }
@@ -150,6 +180,7 @@ class StudentAttendanceViewModel(
     
     fun initiateCheckOut(classId: String) {
         pendingCheckOut = true
+        faceScanOnExitDone = false // Require fresh face scan for checkout
         _attendanceAction.value = AttendanceAction.RequireFaceVerification(classId, isCheckOut = true)
     }
 
