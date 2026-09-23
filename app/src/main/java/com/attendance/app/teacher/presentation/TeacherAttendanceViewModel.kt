@@ -1,150 +1,65 @@
-﻿package com.attendance.app.teacher.presentation
+package com.attendance.app.teacher.presentation
 
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.Build
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.attendance.app.auth.data.TokenManager
-import com.attendance.app.ble.advertiser.BleAdvertiserManager
 import com.attendance.app.ble.scanner.BleScannerService
-import com.attendance.app.core.data.sync.SyncRecordRequest
-import io.ktor.client.HttpClient
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.attendance.app.core.data.attendance.AttendanceRepository
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
 
-class TeacherAttendanceViewModel(
-    private val httpClient: HttpClient,
-    private val tokenManager: TokenManager,
-    private val attendanceDao: com.attendance.app.core.data.local.room.AttendanceDao
-) : ViewModel() {
-    
-    private val _isAdvertising = MutableStateFlow(false)
-    val isAdvertising: StateFlow<Boolean> = _isAdvertising.asStateFlow()
-
-        private val _activeClassId = MutableStateFlow<String?>(null)
-    val activeClassIdFlow: StateFlow<String?> = _activeClassId.asStateFlow()
-    val activeClassId: String? get() = _activeClassId.value
-
-    private val _activeSessionStartTime = MutableStateFlow<Long>(0L)
-    val activeSessionStartTime: StateFlow<Long> = _activeSessionStartTime.asStateFlow()
-
+class TeacherAttendanceViewModel(private val repository: AttendanceRepository) : ViewModel() {
+    val state = repository.state
+    val activeClassIdFlow = state.map { it.activeTeacherSession?.classId }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val activeClassId: String? get() = state.value.activeTeacherSession?.classId
+    val activeSessionStartTime = state.map { it.activeTeacherSession?.startedAtMs ?: 0L }.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+    val isAdvertising = state.map { it.activeTeacherSession != null }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
     var isStartingSession by mutableStateOf(false)
         private set
-        
+    var isStoppingSession by mutableStateOf(false)
+        private set
     var sessionError by mutableStateOf<String?>(null)
         private set
-        
-    private var scanReceiver: BroadcastReceiver? = null
-    private var isReceiverRegistered = false
-
-    fun startAttendanceSession(context: Context, classId: String, className: String, interval: Int, minChecks: Int, onStarted: () -> Unit) {
+    init { refresh() }
+    fun refresh() = repository.refresh()
+    fun startAttendanceSession(context: Context, classId: String, className: String, interval: Int = 5, minChecks: Int = 0, onStarted: () -> Unit) {
         viewModelScope.launch {
             isStartingSession = true
             sessionError = null
-            
-            _activeClassId.value = classId
-            _activeSessionStartTime.value = System.currentTimeMillis()
-            BleScannerService.start(context, classId)
-            
-            if (!isReceiverRegistered) {
-                scanReceiver = object : BroadcastReceiver() {
-                    override fun onReceive(ctx: Context, intent: Intent) {
-                        if (intent.action == BleScannerService.ACTION_DEVICE_FOUND) {
-                            val payload = intent.getByteArrayExtra(BleScannerService.EXTRA_PAYLOAD) ?: return
-                            val studentId = BleAdvertiserManager.extractStudentId(payload) ?: return
-                            Log.d("TeacherVM", "Found student broadcast: $studentId")
-                            syncStudent(studentId, classId)
-                        }
-                    }
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    context.registerReceiver(scanReceiver, IntentFilter(BleScannerService.ACTION_DEVICE_FOUND), Context.RECEIVER_NOT_EXPORTED)
-                } else {
-                    context.registerReceiver(scanReceiver, IntentFilter(BleScannerService.ACTION_DEVICE_FOUND))
-                }
-                isReceiverRegistered = true
-            }
-
-            _isAdvertising.value = true // Keep using the same state name for UI compatibility
-            isStartingSession = false
-            onStarted()
+            try {
+                repository.awaitInitialization()
+                repository.startTeacherSession(classId, className)
+                BleScannerService.start(context.applicationContext, classId)
+                onStarted()
+            } catch (error: Exception) { sessionError = error.message ?: "Unable to start attendance." }
+            finally { isStartingSession = false }
         }
     }
-    
-    private fun syncStudent(studentId: String, classId: String) {
+    fun stopAttendanceSession(context: Context) {
+        if (isStoppingSession) return
+        isStoppingSession = true
+        sessionError = null
         viewModelScope.launch {
             try {
-                val recordId = UUID.randomUUID().toString()
-                attendanceDao.insertRecord(
-                    com.attendance.app.core.data.local.room.AttendanceRecordEntity(
-                        id = recordId,
-                        classId = classId,
-                        studentId = studentId,
-                        timestamp = System.currentTimeMillis(),
-                        isPresent = true,
-                        method = "BLE",
-                        syncStatus = "PENDING"
-                    )
-                )
-            } catch (e: Exception) {
-                Log.e("TeacherVM", "Failed to sync student $studentId", e)
+                repository.awaitInitialization()
+                repository.endTeacherSession()
+                runCatching { BleScannerService.stop(context.applicationContext) }
+                    .onFailure { repository.reportServiceProblem("Teacher", "The session is stopped. Bluetooth is finishing its shutdown.") }
             }
+            catch (error: Exception) { sessionError = error.message ?: "Unable to stop attendance." }
+            finally { isStoppingSession = false }
         }
     }
-
-    fun stopAttendanceSession(context: Context) {
-        val classIdToStop = _activeClassId.value
-        BleScannerService.stop(context)
-        if (isReceiverRegistered && scanReceiver != null) {
+    fun resumeAttendance(context: Context) {
+        viewModelScope.launch {
             try {
-                context.unregisterReceiver(scanReceiver)
-            } catch (e: Exception) {
-                // Ignore
-            }
-            isReceiverRegistered = false
+                repository.awaitInitialization()
+                repository.recoverAfterInterruption()
+                val active = repository.activeTeacherSession() ?: return@launch
+                if (active.bootId == repository.bootId) BleScannerService.start(context.applicationContext, active.classId)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) { sessionError = "Unable to resume attendance: ${error.message}" }
         }
-        
-        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.attendance.app.core.data.sync.AttendanceSyncWorker>().build()
-        androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
-        
-        if (classIdToStop != null) {
-            viewModelScope.launch {
-                try {
-                    val token = tokenManager.getToken()
-                    if (token != null) {
-                        httpClient.post("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/stop") {
-
-                            contentType(ContentType.Application.Json)
-                            setBody(mapOf("classId" to classIdToStop))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("TeacherVM", "Failed to stop session on server", e)
-                }
-            }
-        }
-        
-        _isAdvertising.value = false
-        _activeClassId.value = null
-        _activeSessionStartTime.value = 0L
     }
 }
-
-

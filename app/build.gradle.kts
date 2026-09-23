@@ -1,9 +1,50 @@
-﻿plugins {
+import java.util.Properties
+
+plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+}
+
+// Keep release credentials on the build machine or in the CI secret store.
+val releaseSigningProperties = Properties().apply {
+    val propertiesFile = rootProject.file("signing.properties")
+    if (propertiesFile.isFile) {
+        propertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun releaseSigningValue(environmentName: String, propertyName: String): String? =
+    providers.environmentVariable(environmentName).orNull
+        ?: releaseSigningProperties.getProperty(propertyName)
+
+val validateReleaseSigning by tasks.registering {
+    doLast {
+        val requiredValues = mapOf(
+            "storeFile" to "ATTENDANCE_SIGNING_STORE_FILE",
+            "storePassword" to "ATTENDANCE_SIGNING_STORE_PASSWORD",
+            "keyAlias" to "ATTENDANCE_SIGNING_KEY_ALIAS",
+            "keyPassword" to "ATTENDANCE_SIGNING_KEY_PASSWORD"
+        )
+        val missing = requiredValues.filter { (propertyName, environmentName) ->
+            releaseSigningValue(environmentName, propertyName).isNullOrBlank()
+        }.keys
+        check(missing.isEmpty()) {
+            "Release signing is not configured. Set signing.properties or the " +
+                "ATTENDANCE_SIGNING_* environment variables. Missing: ${missing.joinToString()}. " +
+                "See RELEASE.md."
+        }
+        val keyStorePath = releaseSigningValue("ATTENDANCE_SIGNING_STORE_FILE", "storeFile")!!
+        check(rootProject.file(keyStorePath).isFile) { "Release keystore not found. See RELEASE.md." }
+    }
+}
+
+tasks.configureEach {
+    if (name == "preReleaseBuild") {
+        dependsOn(validateReleaseSigning)
+    }
 }
 
 android {
@@ -14,17 +55,18 @@ android {
         applicationId = "com.attendance.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 8
+        versionName = "1.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-        signingConfigs {
+    signingConfigs {
         create("release") {
-            storeFile = file("attendance_release.keystore")
-            storePassword = "Ramkumar@Yogesh@Rtu"
-            keyAlias = "attendanceKey"
-            keyPassword = "Ramkumar@Yogesh@Rtu"
+            storeFile = releaseSigningValue("ATTENDANCE_SIGNING_STORE_FILE", "storeFile")
+                ?.let { rootProject.file(it) }
+            storePassword = releaseSigningValue("ATTENDANCE_SIGNING_STORE_PASSWORD", "storePassword")
+            keyAlias = releaseSigningValue("ATTENDANCE_SIGNING_KEY_ALIAS", "keyAlias")
+            keyPassword = releaseSigningValue("ATTENDANCE_SIGNING_KEY_PASSWORD", "keyPassword")
         }
     }
 
@@ -41,6 +83,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -52,6 +95,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    androidResources {
+        noCompress += "tflite"
     }
 
     packaging {
@@ -66,6 +113,7 @@ ksp {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
     // Core
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime)

@@ -1,33 +1,36 @@
-﻿package com.attendance.app.student.ui
+package com.attendance.app.student.ui
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.activity.compose.BackHandler
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.attendance.app.core.network.ReportDownloader
 import com.attendance.app.classes.presentation.ClassViewModel
+import com.attendance.app.core.network.ReportDownloader
 import com.attendance.app.core.ui.navigation.Screen
+import com.attendance.app.student.presentation.AttendanceAction
 import com.attendance.app.student.presentation.StudentAttendanceViewModel
 import org.koin.androidx.compose.koinViewModel
+import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,163 +43,121 @@ fun StudentClassDetailScreen(
     val context = LocalContext.current
     val classes by classViewModel.classes.collectAsState()
     val classItem = classes.find { it.id == classId }
-
-    val isScanning by attendanceViewModel.isScanning.collectAsState()
+    val state by attendanceViewModel.state.collectAsState()
+    val action by attendanceViewModel.attendanceAction.collectAsState()
     val scanStatus by attendanceViewModel.scanStatus.collectAsState()
-    val todayStatus by attendanceViewModel.todayStatus.collectAsState()
-    val currentBackStackEntry = navController.currentBackStackEntry
-    val verifiedClassId = currentBackStackEntry?.savedStateHandle?.getStateFlow<String?>("verified_class_id", null)?.collectAsState()?.value
-
-    androidx.compose.runtime.LaunchedEffect(verifiedClassId) {
-        if (verifiedClassId != null && verifiedClassId == classId) {
-            currentBackStackEntry.savedStateHandle.remove<String>("verified_class_id")
-            attendanceViewModel.onFaceVerificationSuccess(classId, context)
-        }
-    }
-    val attendanceAction by attendanceViewModel.attendanceAction.collectAsState()
-
-    androidx.compose.runtime.LaunchedEffect(attendanceAction) {
-        when (val action = attendanceAction) {
-            is com.attendance.app.student.presentation.AttendanceAction.RequireFaceVerification -> {
-                navController.navigate(com.attendance.app.core.ui.navigation.Screen.FaceVerification(action.classId))
-                attendanceViewModel.resetAction()
-            }
-            else -> {}
-        }
-    }
-
-    LaunchedEffect(classId) {
-        attendanceViewModel.fetchTodayStatus(classId)
-    }
-
-        val downloader = remember { ReportDownloader(context) }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
-        if (allGranted) {
-            val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val btAdapter = btManager?.adapter
-            if (btAdapter == null || !btAdapter.isEnabled) {
-                Toast.makeText(context, "Please turn on Bluetooth first!", Toast.LENGTH_LONG).show()
-                return@rememberLauncherForActivityResult
-            }
-
-            attendanceViewModel.checkIn(context, classId)
-        } else {
-            Toast.makeText(context, "Permissions required for broadcasting", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val isSessionActive = isScanning || scanStatus.contains("checked in") || scanStatus.contains("Active")
+    val attempt = state.activeStudentAttempt
     var showLeaveDialog by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = isSessionActive) {
-        showLeaveDialog = true
+    var month by remember { mutableStateOf(YearMonth.now()) }
+    val monthResults = state.studentResults.filter {
+        it.classId == classId && YearMonth.from(Instant.ofEpochMilli(it.startedAtMs).atZone(ZoneId.systemDefault())) == month
+    }.sortedByDescending { it.startedAtMs }
+    LaunchedEffect(action) {
+        val face = action as? AttendanceAction.RequireFaceVerification ?: return@LaunchedEffect
+        attendanceViewModel.resetAction()
+        navController.navigate(Screen.FaceVerification(face.classId, face.isCheckOut)) { launchSingleTop = true }
     }
-
-    if (showLeaveDialog) {
-        AlertDialog(
-            onDismissRequest = { showLeaveDialog = false },
-            title = { Text("Leave Session?") },
-            text = { Text("You must scan your face to successfully check out of this attendance session. Leaving without checking out may mark you as absent.") },
-            confirmButton = {
-                Button(onClick = {
-                    showLeaveDialog = false
-                    attendanceViewModel.initiateCheckOut(classId)
-                }) {
-                    Text("Check Out")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLeaveDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(classItem?.name ?: "Class Details") },
-                                navigationIcon = {
-                    IconButton(onClick = { 
-                        if (isSessionActive) {
-                            showLeaveDialog = true
-                        } else {
-                            navController.popBackStack() 
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { 
-                        val tokenManager = org.koin.java.KoinJavaComponent.getKoin().get<com.attendance.app.auth.data.TokenManager>()
-                        val studentId = tokenManager.getUserId() ?: return@IconButton
-                        downloader.downloadStudentReport(classId, studentId, java.time.YearMonth.now().toString()) 
-                    }) {
-                        Icon(Icons.Default.Download, contentDescription = "Download Report")
-                    }
-                }
-            )
+    LaunchedEffect(classId) { attendanceViewModel.refresh() }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, attendanceViewModel) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) attendanceViewModel.resumeAttendance(context)
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (classItem == null) {
-                CircularProgressIndicator()
-            } else {
-                Text(classItem.name, style = MaterialTheme.typography.headlineMedium)
-                Text("Teacher: ${classItem.teacherName}", style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(16.dp))
-                if (todayStatus != null) {
-                    Text("Today's Status: $todayStatus", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                } else {
-                    Text("Fetching today's status...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-
-                if (isScanning) {
-                    CircularProgressIndicator(modifier = Modifier.size(64.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(scanStatus, style = MaterialTheme.typography.bodyLarge)
-                } else if (scanStatus.contains("checked in") || scanStatus.contains("Active")) {
-                    Text(scanStatus, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { attendanceViewModel.initiateCheckOut(classId) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) {
-                        Text("Leave Session / Stop Attendance", style = MaterialTheme.typography.titleMedium)
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                arrayOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.POST_NOTIFICATIONS)
-                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                arrayOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION)
-                            } else {
-                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val beginCheckIn = {
+        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+        if (adapter?.isEnabled == true) attendanceViewModel.checkIn(context, classId)
+        else Toast.makeText(context, "Turn on Bluetooth before joining.", Toast.LENGTH_LONG).show()
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result.filterKeys { it != Manifest.permission.POST_NOTIFICATIONS }.values.all { it }) beginCheckIn()
+        else Toast.makeText(context, "Bluetooth permission is required for attendance.", Toast.LENGTH_LONG).show()
+    }
+    BackHandler(enabled = attempt != null) { showLeaveDialog = true }
+    if (showLeaveDialog) AlertDialog(
+        onDismissRequest = { showLeaveDialog = false },
+        title = { Text("Face checkout required") },
+        text = { Text("Scan your face within five minutes after your teacher stops the session. Closing the app does not complete checkout; a missing or late scan will be marked Under Review when records sync.") },
+        confirmButton = { TextButton(onClick = {
+            showLeaveDialog = false
+            attempt?.let { attendanceViewModel.initiateCheckOut(it.classId) }
+        }) { Text("Scan face to leave") } },
+        dismissButton = { TextButton(onClick = { showLeaveDialog = false }) { Text("Stay") } }
+    )
+    val downloader = remember { ReportDownloader(context) }
+    Scaffold(topBar = {
+        TopAppBar(title = { Text(classItem?.name ?: "Class attendance") }, navigationIcon = {
+            IconButton(onClick = { if (attempt != null) showLeaveDialog = true else navController.popBackStack() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+        }, actions = {
+            IconButton(onClick = { attendanceViewModel.refresh() }) { Icon(Icons.Default.Refresh, "Sync attendance") }
+            IconButton(onClick = {
+                val token = org.koin.java.KoinJavaComponent.getKoin().get<com.attendance.app.auth.data.TokenManager>()
+                token.getUserId()?.let { downloader.downloadStudentReport(classId, it, month.toString()) }
+            }) { Icon(Icons.Default.Download, "Download monthly report") }
+        })
+    }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                classItem?.let { Text("Teacher: ${it.teacherName}", Modifier.padding(top = 12.dp)) }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        when {
+                            attempt?.classId == classId -> {
+                                Text("Present · provisional", style = MaterialTheme.typography.titleMedium)
+                                Text("Broadcasts sent: ${attempt.broadcastCount}")
+                                Text("Broadcasts are pending confirmation from your teacher's received checks. Entry face: Under Review until sync.")
+                                Text("Keep Bluetooth on. When your teacher announces the end, scan your face within five minutes.")
+                                Button(onClick = { attendanceViewModel.initiateCheckOut(classId) }, modifier = Modifier.fillMaxWidth()) { Text("Scan face to leave") }
                             }
-                            permissionLauncher.launch(permissions)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Mark Attendance", style = MaterialTheme.typography.titleMedium)
+                            attempt != null -> {
+                                Text("Attendance is active in another class.")
+                                Button(onClick = { navController.navigate(Screen.StudentClassDetail(attempt.classId)) }) { Text("Return to active class") }
+                            }
+                            else -> {
+                                Text("Entry face must be completed within five minutes after your teacher starts attendance.")
+                                Button(onClick = {
+                                    val permissions = mutableListOf<String>()
+                                    if (Build.VERSION.SDK_INT >= 31) permissions.addAll(listOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT))
+                                    if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                                    if (permissions.isEmpty()) beginCheckIn() else permissionLauncher.launch(permissions.toTypedArray())
+                                }, modifier = Modifier.fillMaxWidth()) { Text("Mark attendance · scan face") }
+                            }
+                        }
+                        if (scanStatus.isNotBlank() && scanStatus != "Ready") Text(scanStatus)
+                        state.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        state.syncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { month = month.minusMonths(1) }) { Text("Previous") }
+                    Text(month.toString(), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { month = month.plusMonths(1) }, enabled = month < YearMonth.now()) { Text("Next") }
+                }
+                Text("Monthly attendance", style = MaterialTheme.typography.titleLarge)
+                Text("Present: ${monthResults.count { it.status == "PRESENT" }} · Absent: ${monthResults.count { it.status == "ABSENT" }} · Under Review: ${monthResults.count { it.status == "UNDER_REVIEW" }}")
+                Text("Provisional results may change after both phones sync. Only held class sessions count.", style = MaterialTheme.typography.bodySmall)
+                if (monthResults.isEmpty()) Text("No saved sessions for this month.", Modifier.padding(vertical = 12.dp))
+            }
+            items(monthResults, key = { it.sessionId }) { result ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(Instant.ofEpochMilli(result.startedAtMs).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMM, h:mm a")))
+                        Text(result.status.replace('_', ' ') + if (result.provisional) " · provisional" else "", style = MaterialTheme.typography.titleMedium)
+                        Text("Checks: ${result.successfulChecks} out of ${result.totalChecks}")
+                        Text("Entry face: ${result.entryFaceStatus.replace('_', ' ')} · Exit face: ${result.exitFaceStatus.replace('_', ' ')}")
+                        result.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
         }
     }
 }
-
-
-
-

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,24 +50,22 @@ fun TeacherHomeScreen(
     val uiState by profileViewModel.uiState.collectAsState()
     val classes by classViewModel.classes.collectAsState()
     val activeClassId by attendanceViewModel.activeClassIdFlow.collectAsState()
-    val isAdvertising by attendanceViewModel.isAdvertising.collectAsState()
+    val attendanceState by attendanceViewModel.state.collectAsState()
     val context = LocalContext.current
 
-    var selectedClassId by remember { mutableStateOf<String?>(null) }
-    var selectedClassName by remember { mutableStateOf<String?>(null) }
-    var sessionInterval by remember { mutableStateOf(10f) }
-    var sessionMinChecks by remember { mutableStateOf(3f) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
-        if (allGranted && selectedClassId != null) {
+    var selectedClassId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedClassName by rememberSaveable { mutableStateOf<String?>(null) }
+    var showBackgroundPermissionDialog by rememberSaveable { mutableStateOf(false) }
+    var confirmStop by remember { mutableStateOf(false) }
+    val startSelectedSession: () -> Unit = start@{
+        val classId = selectedClassId ?: return@start
+        if (attendanceViewModel.isStartingSession) return@start
+        try {
             val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
             val btAdapter = btManager?.adapter
             if (btAdapter == null || !btAdapter.isEnabled) {
                 Toast.makeText(context, "Please turn on Bluetooth first!", Toast.LENGTH_LONG).show()
-                return@rememberLauncherForActivityResult
+                return@start
             }
 
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
@@ -75,24 +74,64 @@ fun TeacherHomeScreen(
             
             if (!isLocationEnabled) {
                 Toast.makeText(context, "Please turn on Location (GPS) in your phone settings! It is required for BLE.", Toast.LENGTH_LONG).show()
-                return@rememberLauncherForActivityResult
+                return@start
             }
 
             attendanceViewModel.startAttendanceSession(
                 context, 
-                selectedClassId!!, 
-                selectedClassName ?: "Class", 
-                sessionInterval.toInt(), 
-                sessionMinChecks.toInt()
+                classId,
+                selectedClassName ?: "Class"
             ) {
-                navController.navigate(Screen.LiveSession(selectedClassId!!, sessionInterval.toInt(), sessionMinChecks.toInt(), attendanceViewModel.activeSessionStartTime.value))
+                navController.navigate(Screen.LiveSession(classId, sessionId = attendanceViewModel.state.value.activeTeacherSession?.sessionId))
                 selectedClassId = null
                 selectedClassName = null
             }
+        } catch (_: SecurityException) {
+            Toast.makeText(context, "Grant the Bluetooth and location permissions before starting.", Toast.LENGTH_LONG).show()
+        }
+    }
+    val hasBackgroundLocation = {
+        Build.VERSION.SDK_INT !in 29..30 || androidx.core.content.ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+    val backgroundSettingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (hasBackgroundLocation()) startSelectedSession()
+        else Toast.makeText(context, "Choose Allow all the time for location to receive attendance while this phone is locked.", Toast.LENGTH_LONG).show()
+    }
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startSelectedSession()
+        else Toast.makeText(context, "Location access in the background is required while attendance is active.", Toast.LENGTH_LONG).show()
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.filterKeys { it != Manifest.permission.POST_NOTIFICATIONS }.values.all { it }
+        if (allGranted && selectedClassId != null) {
+            if (hasBackgroundLocation()) startSelectedSession() else showBackgroundPermissionDialog = true
         } else {
             Toast.makeText(context, "Permissions are required to launch session.", Toast.LENGTH_LONG).show()
         }
     }
+    if (showBackgroundPermissionDialog) AlertDialog(
+        onDismissRequest = { showBackgroundPermissionDialog = false },
+        title = { Text("Receive checks while your phone is locked") },
+        text = { Text("Android 10 and 11 need location permission set to Allow all the time so attendance checks keep arriving when this app is in the background. Open Permissions, then Location, and select Allow all the time.") },
+        confirmButton = { TextButton(onClick = {
+            showBackgroundPermissionDialog = false
+            if (Build.VERSION.SDK_INT == 29) backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            else backgroundSettingsLauncher.launch(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.parse("package:${context.packageName}")))
+        }) { Text(if (Build.VERSION.SDK_INT == 29) "Continue" else "Open settings") } },
+        dismissButton = { TextButton(onClick = { showBackgroundPermissionDialog = false }) { Text("Cancel") } }
+    )
+    if (confirmStop) AlertDialog(
+        onDismissRequest = { confirmStop = false },
+        title = { Text("Stop attendance?") },
+        text = { Text("Tell students to scan their faces to leave. Their five-minute exit window starts when you stop this session.") },
+        confirmButton = { TextButton(onClick = { confirmStop = false; attendanceViewModel.stopAttendanceSession(context) }) { Text("Stop session") } },
+        dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Continue session") } }
+    )
 
     val teacherLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(teacherLifecycleOwner) {
@@ -100,6 +139,7 @@ fun TeacherHomeScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 profileViewModel.loadProfile()
                 classViewModel.fetchTeacherClasses()
+                attendanceViewModel.resumeAttendance(context)
             }
         }
         teacherLifecycleOwner.lifecycle.addObserver(observer)
@@ -157,6 +197,10 @@ fun TeacherHomeScreen(
             }
 
             Text("Your Classes", style = MaterialTheme.typography.titleLarge)
+            Text("Checks every five minutes. Final attendance requires at least 75% and valid entry / exit face scans.", style = MaterialTheme.typography.bodySmall)
+            attendanceViewModel.sessionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            attendanceState.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (attendanceViewModel.isStartingSession) LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(16.dp))
 
             if (classes.isEmpty()) {
@@ -182,17 +226,18 @@ fun TeacherHomeScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(text = cls.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = "Code: ", style = MaterialTheme.typography.bodyMedium)
+                                        Text(text = "Code: ${cls.classCode}", style = MaterialTheme.typography.bodyMedium)
                                     }
                                     if (isActive) {
                                         Button(
-                                            onClick = { attendanceViewModel.stopAttendanceSession(context) },
+                                            onClick = { confirmStop = true },
+                                            enabled = !attendanceViewModel.isStoppingSession,
                                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                                         ) {
                                             Text("Stop")
                                         }
                                     } else {
-                                                                                Button(onClick = {
+                                        Button(enabled = activeClassId == null && !attendanceViewModel.isStartingSession, onClick = {
                                             selectedClassId = cls.id
                                             selectedClassName = cls.name
                                             val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -223,7 +268,7 @@ fun TeacherHomeScreen(
                                 if (isActive) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     OutlinedButton(
-                                        onClick = { navController.navigate(Screen.LiveSession(cls.id, startTime = attendanceViewModel.activeSessionStartTime.value)) },
+                                        onClick = { navController.navigate(Screen.LiveSession(cls.id, sessionId = attendanceState.activeTeacherSession?.sessionId)) },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text("View Active Session")
@@ -234,50 +279,6 @@ fun TeacherHomeScreen(
                     }
                 }
             }
-        }
-    }
-    if (false) {
-        LaunchedEffect(selectedClassId) {
-            val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.POST_NOTIFICATIONS
-                )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            } else {
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            }
-            permissionLauncher.launch(perms)
-        }
-        
-        if (attendanceViewModel.sessionError != null) {
-            AlertDialog(
-                onDismissRequest = { attendanceViewModel.sessionError.let { selectedClassId = null; selectedClassName = null } },
-                title = { Text("Error") },
-                text = { Text(attendanceViewModel.sessionError!!, color = MaterialTheme.colorScheme.error) },
-                confirmButton = {
-                    TextButton(onClick = { selectedClassId = null; selectedClassName = null }) {
-                        Text("OK")
-                    }
-                }
-            )
-        } else if (attendanceViewModel.isStartingSession) {
-             AlertDialog(
-                onDismissRequest = { },
-                title = { Text("Starting Session...") },
-                text = { CircularProgressIndicator() },
-                confirmButton = { }
-            )
         }
     }
 }
@@ -292,18 +293,3 @@ fun TeacherBottomBar(navController: NavController, selectedIndex: Int) {
         NavigationBarItem(icon = { Icon(Icons.Default.Person, "Profile") }, label = { Text("Profile") }, selected = selectedIndex == 4, onClick = { navController.navigate(Screen.TeacherProfile) { launchSingleTop = true } })
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

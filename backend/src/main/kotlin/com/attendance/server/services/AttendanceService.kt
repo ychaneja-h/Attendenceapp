@@ -1,4 +1,4 @@
-﻿package com.attendance.server.services
+package com.attendance.server.services
 
 import com.attendance.server.models.AttendanceRecords
 import com.attendance.server.models.AttendanceSessions
@@ -115,18 +115,6 @@ class AttendanceService {
         return transaction {
             val todayStart = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS)
             
-            // Auto-lock past sessions
-            val pastSessions = AttendanceSessions.selectAll().where { AttendanceSessions.startedAt less todayStart }
-            val pastSessionIds = pastSessions.map { it[AttendanceSessions.id] }
-            if (pastSessionIds.isNotEmpty()) {
-                AttendanceRecords.update({ (AttendanceRecords.sessionId inList pastSessionIds) and (AttendanceRecords.finalStatus eq "UNDER_REVIEW") }) {
-                    it[finalStatus] = "ABSENT"
-                }
-                AttendanceSessions.update({ AttendanceSessions.id inList pastSessionIds }) {
-                    it[sessionStatus] = "COMPLETED"
-                }
-            }
-
             records.map { record ->
                 val cid = UUID.fromString(record.classId)
                 val sid = UUID.fromString(record.studentId)
@@ -252,11 +240,6 @@ class AttendanceService {
                     reason = "No checks recorded"
                 }
                 
-                if (forceLock && newStatus == "UNDER_REVIEW") {
-                    newStatus = "ABSENT"
-                    reason = "Auto-resolved at midnight (offline sync)"
-                }
-                
                 AttendanceRecords.update({ AttendanceRecords.id eq record[AttendanceRecords.id] }) {
                     it[finalStatus] = newStatus
                     it[reviewReason] = reason
@@ -363,131 +346,111 @@ class AttendanceService {
         }
     }
     
-    fun getStudentMonthReportCsv(classId: UUID, studentId: UUID, month: String): String {
-        return transaction {
-            val (yearStr, monthStr) = month.split("-")
-            val year = yearStr.toInt()
-            val monthInt = monthStr.toInt()
-            val startDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
-            val endDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).plusMonths(1).toInstant(java.time.ZoneOffset.UTC)
-            
-            val records = AttendanceRecords.innerJoin(AttendanceSessions)
-                .select(AttendanceSessions.startedAt, AttendanceRecords.finalStatus)
-                .where {
-                    (AttendanceSessions.classId eq classId) and
-                    (AttendanceRecords.studentId eq studentId) and
-                    (AttendanceSessions.startedAt greaterEq startDate) and
-                    (AttendanceSessions.startedAt less endDate)
-                }
-                .orderBy(AttendanceSessions.startedAt to SortOrder.ASC)
+    fun canReadReport(actorId: String, classId: String, studentId: String? = null): Boolean = transaction {
+        val actor = UUID.fromString(actorId)
+        val cid = UUID.fromString(classId)
+        val owner = Classes.selectAll().where { Classes.id eq cid }.firstOrNull()?.get(Classes.teacherId)
+        owner == actor || (studentId == actorId && com.attendance.server.models.ClassMembers.selectAll()
+            .where { (com.attendance.server.models.ClassMembers.classId eq cid) and (com.attendance.server.models.ClassMembers.studentId eq actor) }.any())
+    }
 
-            val csvBuilder = StringBuilder()
-            csvBuilder.append("Date,Status\n")
-            
-            records.forEach { row ->
-                val date = java.time.LocalDateTime.ofInstant(row[AttendanceSessions.startedAt], java.time.ZoneId.of("UTC")).toLocalDate().toString()
-                val status = row[AttendanceRecords.finalStatus] ?: "UNKNOWN"
-                csvBuilder.append("$date,$status\n")
-            }
-            
-            csvBuilder.toString()
+    fun getStudentMonthReportCsv(classId: UUID, studentId: UUID, month: String): String = transaction {
+        val bounds = monthBounds(month)
+        val legacy = AttendanceRecords.innerJoin(AttendanceSessions)
+            .select(AttendanceSessions.id, AttendanceSessions.startedAt, AttendanceRecords.finalStatus)
+            .where { (AttendanceSessions.classId eq classId) and (AttendanceRecords.studentId eq studentId) and
+                (AttendanceSessions.startedAt greaterEq bounds.first) and (AttendanceSessions.startedAt less bounds.second) }
+            .map { listOf(it[AttendanceSessions.id].toString(), it[AttendanceSessions.startedAt].toString(), it[AttendanceRecords.finalStatus] ?: "ABSENT", "false", "", "", "Legacy attendance") }
+        val owner = Classes.selectAll().where { Classes.id eq classId }.single()[Classes.teacherId].toString()
+        val current = PlanAAttendanceService().sessions(owner, classId.toString())
+            .filter { it.startedAtMs >= bounds.first.toEpochMilli() && it.startedAtMs < bounds.second.toEpochMilli() }
+            .mapNotNull { session -> session.students.firstOrNull { it.studentId == studentId.toString() }?.let { row ->
+                listOf(session.sessionId, java.time.Instant.ofEpochMilli(session.startedAtMs).toString(), row.status,
+                    row.provisional.toString(), row.successfulChecks.toString(), row.totalChecks.toString(),
+                    listOfNotNull(row.overrideReason).plus(row.reasons).joinToString("; "))
+            } }
+        buildString {
+            append("SessionId,StartedAtUtc,Status,Provisional,ChecksPassed,TotalChecks,Reasons\n")
+            (legacy + current).sortedBy { it[1] }.forEach { append(it.joinToString(",", transform = ::csvCell)).append('\n') }
         }
     }
 
-    fun getClassMonthReportCsv(classId: UUID, month: String): String {
-        return transaction {
-            val (yearStr, monthStr) = month.split("-")
-            val year = yearStr.toInt()
-            val monthInt = monthStr.toInt()
-            val startDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
-            val endDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).plusMonths(1).toInstant(java.time.ZoneOffset.UTC)
-
-            val sessions = AttendanceSessions
-                .select(AttendanceSessions.id, AttendanceSessions.startedAt)
-                .where {
-                    (AttendanceSessions.classId eq classId) and
-                    (AttendanceSessions.startedAt greaterEq startDate) and
-                    (AttendanceSessions.startedAt less endDate)
-                }
-                .orderBy(AttendanceSessions.startedAt to SortOrder.ASC)
-                .toList()
-
-            val sessionIds = sessions.map { it[AttendanceSessions.id] }
-            val dates = sessions.map { java.time.LocalDateTime.ofInstant(it[AttendanceSessions.startedAt], java.time.ZoneId.of("UTC")).toLocalDate().toString() }
-
-            val students = com.attendance.server.models.ClassMembers.innerJoin(Users)
-                .select(Users.id, Users.name)
-                .where { com.attendance.server.models.ClassMembers.classId eq classId }
-                .toList()
-                
-            val recordsMap = if (sessionIds.isEmpty()) {
-                emptyMap()
-            } else {
-                AttendanceRecords
-                    .select(AttendanceRecords.sessionId, AttendanceRecords.studentId, AttendanceRecords.finalStatus)
-                    .where { AttendanceRecords.sessionId inList sessionIds }
-                    .toList()
-                    .groupBy { it[AttendanceRecords.studentId] to it[AttendanceRecords.sessionId] }
+    fun getClassMonthReportCsv(classId: UUID, month: String): String = transaction {
+        val bounds = monthBounds(month)
+        val legacy = AttendanceSessions.selectAll()
+            .where { (AttendanceSessions.classId eq classId) and (AttendanceSessions.startedAt greaterEq bounds.first) and (AttendanceSessions.startedAt less bounds.second) }
+            .map { it[AttendanceSessions.id] to it[AttendanceSessions.startedAt] }
+        val owner = Classes.selectAll().where { Classes.id eq classId }.single()[Classes.teacherId].toString()
+        val current = PlanAAttendanceService().sessions(owner, classId.toString())
+            .filter { it.startedAtMs >= bounds.first.toEpochMilli() && it.startedAtMs < bounds.second.toEpochMilli() }
+        val roster = com.attendance.server.models.ClassMembers.innerJoin(Users)
+            .select(Users.id, Users.name, Users.collegeId)
+            .where { com.attendance.server.models.ClassMembers.classId eq classId }
+            .associate { it[Users.id].toString() to (it[Users.name] to it[Users.collegeId]) }.toMutableMap()
+        current.flatMap { it.students }.forEach { roster[it.studentId] = it.name to it.collegeId }
+        val legacyIds = legacy.map { it.first }
+        val oldRows = if (legacyIds.isEmpty()) emptyMap() else AttendanceRecords.selectAll()
+            .where { AttendanceRecords.sessionId inList legacyIds }
+            .associate { (it[AttendanceRecords.studentId].toString() to it[AttendanceRecords.sessionId].toString()) to (it[AttendanceRecords.finalStatus] ?: "ABSENT") }
+        val newRows = current.flatMap { session -> session.students.map { (it.studentId to session.sessionId) to
+            (it.status + if (it.provisional) " (provisional)" else "") } }.toMap()
+        val currentSessionIds = current.map { it.sessionId }.toSet()
+        val sessions = (legacy.map { it.first.toString() to it.second } + current.map { it.sessionId to java.time.Instant.ofEpochMilli(it.startedAtMs) }).sortedBy { it.second }
+        buildString {
+            append("StudentId,StudentName,CollegeId")
+            sessions.forEach { append(',').append(csvCell("${it.second} [${it.first}]")) }
+            append('\n')
+            roster.entries.sortedBy { it.value.first }.forEach { (studentId, name) ->
+                append(listOf(studentId, name.first, name.second).joinToString(",", transform = ::csvCell))
+                sessions.forEach { append(',').append(csvCell(newRows[studentId to it.first] ?: oldRows[studentId to it.first]
+                    ?: if (it.first in currentSessionIds) "NOT_ENROLLED" else "ABSENT")) }
+                append('\n')
             }
-            
-            val csvBuilder = StringBuilder()
-            csvBuilder.append("StudentName")
-            dates.forEach { date ->
-                csvBuilder.append(",$date")
-            }
-            csvBuilder.append("\n")
-            
-            students.forEach { studentRow ->
-                val studentId = studentRow[Users.id]
-                val studentName = studentRow[Users.name]
-                csvBuilder.append(studentName)
-                
-                sessions.forEach { sessionRow ->
-                    val sessionId = sessionRow[AttendanceSessions.id]
-                    val record = recordsMap[studentId to sessionId]?.firstOrNull()
-                    val status = record?.get(AttendanceRecords.finalStatus) ?: "ABSENT"
-                    csvBuilder.append(",$status")
-                }
-                csvBuilder.append("\n")
-            }
-            
-            csvBuilder.toString()
         }
     }
-    
-    fun getStudentTodayStatus(classId: UUID, studentId: UUID): String? {
+
+    private fun monthBounds(month: String): Pair<java.time.Instant, java.time.Instant> {
+        val parsed = java.time.YearMonth.parse(month)
+        return parsed.atDay(1).atStartOfDay().toInstant(java.time.ZoneOffset.UTC) to parsed.plusMonths(1).atDay(1).atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+    }
+
+    private fun csvCell(value: String): String {
+        val safe = if (value.trimStart().firstOrNull() in listOf('=', '+', '-', '@')) "'$value" else value
+        return "\"" + safe.replace("\"", "\"\"") + "\""
+    }
+    fun getStudentTodayStatus(classId: UUID, studentId: UUID, includeChecks: Boolean = true): String? {
         return transaction {
-            val todayStart = java.time.LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+            val todayStart = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
             val todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS)
-                        val record = AttendanceRecords.innerJoin(AttendanceSessions)
-                .select(listOf(AttendanceRecords.finalStatus, AttendanceRecords.successfulChecks, AttendanceSessions.minSuccessfulChecks))
+            val current = PlanAAttendanceService().sessions(studentId.toString(), classId.toString())
+                .firstOrNull { it.startedAtMs >= todayStart.toEpochMilli() && it.startedAtMs < todayEnd.toEpochMilli() &&
+                    it.students.any { row -> row.studentId == studentId.toString() } }
+            val legacySession = AttendanceSessions.selectAll()
                 .where {
-                    (AttendanceRecords.studentId eq studentId) and
                     (AttendanceSessions.classId eq classId) and
                     (AttendanceSessions.startedAt greaterEq todayStart) and
                     (AttendanceSessions.startedAt less todayEnd)
                 }
                 .orderBy(AttendanceSessions.startedAt, org.jetbrains.exposed.sql.SortOrder.DESC)
                 .firstOrNull()
-            
-            if (record != null) {
-                val status = record[AttendanceRecords.finalStatus]
-                val checks = record[AttendanceRecords.successfulChecks]
-                val minChecks = record[AttendanceSessions.minSuccessfulChecks]
-                "$status (Checks: $checks/$minChecks)"
-            } else {
-                null
+            if (current != null && (legacySession == null || current.startedAtMs >= legacySession[AttendanceSessions.startedAt].toEpochMilli())) {
+                val row = current.students.single { it.studentId == studentId.toString() }
+                return@transaction if (includeChecks) "${row.status} (Checks: ${row.successfulChecks}/${row.totalChecks}${if (row.provisional) ", provisional" else ""})" else row.status
             }
+            if (legacySession == null) return@transaction null
+            val record = AttendanceRecords.selectAll().where {
+                (AttendanceRecords.studentId eq studentId) and (AttendanceRecords.sessionId eq legacySession[AttendanceSessions.id])
+            }.firstOrNull()
+            val status = record?.get(AttendanceRecords.finalStatus) ?: "ABSENT"
+            val checks = record?.get(AttendanceRecords.successfulChecks) ?: 0
+            val minChecks = legacySession[AttendanceSessions.minSuccessfulChecks]
+            if (includeChecks) "$status (Checks: $checks/$minChecks)" else status
         }
     }
 
     fun getStudentSummary(studentId: UUID, month: String): StudentSummaryResponse {
         return transaction {
-            val (yearStr, monthStr) = month.split("-")
-            val year = yearStr.toInt()
-            val monthInt = monthStr.toInt()
-            val startDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).toInstant(java.time.ZoneOffset.UTC)
-            val endDate = java.time.LocalDateTime.of(year, monthInt, 1, 0, 0).plusMonths(1).toInstant(java.time.ZoneOffset.UTC)
+            val (startDate, endDate) = monthBounds(month)
 
             val records = AttendanceRecords.innerJoin(AttendanceSessions)
                 .select(AttendanceRecords.finalStatus)
@@ -496,18 +459,12 @@ class AttendanceService {
                     (AttendanceSessions.startedAt greaterEq startDate) and
                     (AttendanceSessions.startedAt less endDate)
                 }
-                .toList()
-                
-            var present = 0
-            var absent = 0
-            records.forEach {
-                if (it[AttendanceRecords.finalStatus] == "PRESENT") {
-                    present++
-                } else if (it[AttendanceRecords.finalStatus] == "ABSENT") {
-                    absent++
-                }
-            }
-            StudentSummaryResponse(present, absent)
+                .map { it[AttendanceRecords.finalStatus] }
+            val current = PlanAAttendanceService().sessions(studentId.toString(), null)
+                .filter { it.startedAtMs >= startDate.toEpochMilli() && it.startedAtMs < endDate.toEpochMilli() }
+                .flatMap { it.students }.filter { it.studentId == studentId.toString() }.map { it.status }
+            val statuses = records + current
+            StudentSummaryResponse(statuses.count { it == "PRESENT" }, statuses.count { it == "ABSENT" })
         }
     }
 }
@@ -559,13 +516,3 @@ data class LiveStudentResponse(
     val isFaceVerified: Boolean,
     val successfulChecks: Int
 )
-
-
-
-
-
-
-
-
-
-

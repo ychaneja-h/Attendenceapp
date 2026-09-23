@@ -1,4 +1,4 @@
-﻿package com.attendance.server.routes
+package com.attendance.server.routes
 
 import com.attendance.server.services.AdminService
 import io.ktor.http.*
@@ -28,7 +28,7 @@ fun Route.adminRoutes() {
                         val hods = AdminService.getPendingHods()
                         call.respond(HttpStatusCode.OK, hods)
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to get pending HODs")))
+                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                     }
                 }
 
@@ -37,7 +37,7 @@ fun Route.adminRoutes() {
                         val hods = AdminService.getActiveHods()
                         call.respond(HttpStatusCode.OK, hods)
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to get active HODs")))
+                        call.respond(HttpStatusCode.InternalServerError, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                     }
                 }
                 
@@ -47,7 +47,7 @@ fun Route.adminRoutes() {
                         AdminService.approveHod(id)
                         call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD approved successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to approve HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                     }
                 }
 
@@ -57,7 +57,7 @@ fun Route.adminRoutes() {
                         AdminService.rejectHod(id)
                         call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD rejected successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to reject HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                     }
                 }
                 
@@ -67,7 +67,7 @@ fun Route.adminRoutes() {
                         AdminService.deleteHod(id)
                         call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(message = "HOD deleted successfully"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to delete HOD")))
+                        call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                     }
                 }
             }

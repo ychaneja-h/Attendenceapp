@@ -1,4 +1,4 @@
-﻿package com.attendance.app.student.ui
+package com.attendance.app.student.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -46,15 +46,7 @@ fun StudentProfileScreen(
     val isSaving by profileViewModel.isSaving.collectAsState()
     val saveMessage by profileViewModel.saveMessage.collectAsState()
     
-                OutlinedButton(
-                onClick = { navController.navigate(Screen.ChangePassword) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Change Password")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val context = LocalContext.current
+    val context = LocalContext.current
     var faceApprovalStatus by remember { mutableStateOf("Checking...") }
     val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
 
@@ -70,46 +62,7 @@ fun StudentProfileScreen(
     LaunchedEffect(refreshTrigger) {
         profileViewModel.loadProfile()
         try {
-            val response = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/requests/me")
-            if (response.status.isSuccess()) {
-                val array = JSONArray(response.bodyAsText())
-                var hasPending = false
-                var latestApproved: org.json.JSONObject? = null
-                
-                for (i in 0 until array.length()) {
-                    val req = array.getJSONObject(i)
-                    if (req.getString("requestType") == "FACE_REGISTRATION") {
-                        val status = req.getString("status")
-                        if (status == "PENDING") {
-                            hasPending = true
-                            break
-                        } else if (status == "APPROVED" && latestApproved == null) {
-                            latestApproved = req
-                        }
-                    }
-                }
-                
-                if (hasPending) {
-                    prefs.edit().putBoolean("face_approval_pending", true).apply()
-                    faceApprovalStatus = "Face Status: Pending Teacher Approval"
-                } else if (latestApproved != null) {
-                    prefs.edit().putBoolean("face_approval_pending", false).apply()
-                    faceApprovalStatus = "Face Status: Approved ✅"
-                    val pendingFace = prefs.getString("pending_face_embedding", null)
-                    if (pendingFace != null) {
-                        prefs.edit()
-                            .putString("registered_face_embedding", pendingFace)
-                            .remove("pending_face_embedding")
-                            .apply()
-                    } else if (!prefs.contains("registered_face_embedding")) {
-                        // Download from server if missing (e.g. new device)
-                        prefs.edit().putString("registered_face_embedding", latestApproved.getString("requestedData")).apply()
-                    }
-                } else {
-                    prefs.edit().putBoolean("face_approval_pending", false).apply()
-                    faceApprovalStatus = "Face Status: No Face Registered"
-                }
-            }
+            faceApprovalStatus = com.attendance.app.face.syncApprovedFace(context, httpClient)
         } catch (e: Exception) {
             faceApprovalStatus = "Face Status: Unknown"
         }
@@ -140,7 +93,7 @@ fun StudentProfileScreen(
                 is ProfileUiState.Loading -> CircularProgressIndicator()
                 is ProfileUiState.Error -> Text("Error loading profile")
                 is ProfileUiState.Success -> {
-                                OutlinedButton(
+                    OutlinedButton(
                 onClick = { navController.navigate(Screen.ChangePassword) },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -252,7 +205,7 @@ fun StudentProfileScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-                        OutlinedButton(
+            OutlinedButton(
                 onClick = { navController.navigate(Screen.ChangePassword) },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -263,7 +216,7 @@ fun StudentProfileScreen(
             val context = LocalContext.current
             OutlinedButton(
                 onClick = {
-                    com.attendance.app.ble.scanner.BleScannerService.stop(context)
+                    com.attendance.app.ble.advertiser.BleAdvertiserService.stop(context)
                     authViewModel.logout()
                     navController.navigate(Screen.RoleSelection) {
                         popUpTo(0) { inclusive = true }

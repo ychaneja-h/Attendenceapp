@@ -1,4 +1,4 @@
-﻿package com.attendance.server.routes
+package com.attendance.server.routes
 
 import com.attendance.server.services.RequestService
 import io.ktor.server.application.*
@@ -30,7 +30,8 @@ fun Route.requestRoutes() {
                     requestService.createRequest(studentId, "DEVICE_CHANGE", req.newDeviceId)
                     call.respond(HttpStatusCode.Created, com.attendance.shared.dto.GenericResponse(status = "success"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
@@ -42,7 +43,8 @@ fun Route.requestRoutes() {
                     val result = requestService.createFaceRequest(studentId, req.faceEmbeddingJSON)
                     call.respond(HttpStatusCode.Created, com.attendance.shared.dto.GenericResponse(status = result))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
@@ -53,36 +55,40 @@ fun Route.requestRoutes() {
                     val requests = requestService.getMyRequests(studentId)
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             get("/teacher") {
                 try {
-                    val requests = requestService.getPendingRequests()
+                    val requests = requestService.getPendingRequests(call.actorId())
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             post("/{id}/approve") {
                 try {
                     val id = UUID.fromString(call.parameters["id"])
-                    requestService.approveRequest(id)
+                    requestService.approveRequest(id, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = "approved"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             post("/{id}/reject") {
                 try {
                     val id = UUID.fromString(call.parameters["id"])
-                    requestService.rejectRequest(id)
+                    requestService.rejectRequest(id, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = "rejected"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
         }

@@ -1,101 +1,37 @@
-﻿package com.attendance.app.teacher.presentation
-
+package com.attendance.app.teacher.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.attendance.app.auth.data.TokenManager
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.attendance.app.core.data.attendance.AttendanceRepository
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-import com.attendance.app.core.data.local.room.AttendanceDao
-
-class TeacherReviewsViewModel(
-    private val httpClient: HttpClient,
-    private val tokenManager: TokenManager,
-    private val attendanceDao: AttendanceDao
-) : ViewModel() {
-
+class TeacherReviewsViewModel(private val repository: AttendanceRepository) : ViewModel() {
+    private val classId = MutableStateFlow<String?>(null)
     private val _uiState = MutableStateFlow<ReviewUiState>(ReviewUiState.Loading)
-    val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
-
-    private var currentClassId: String? = null
-
-    fun loadPendingReviews(classId: String) {
-        currentClassId = classId
+    val uiState = _uiState.asStateFlow()
+    init {
         viewModelScope.launch {
-            _uiState.value = ReviewUiState.Loading
-            try {
-                val token = tokenManager.getToken()
-                if (token != null) {
-                    val response = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/attendance/reviews/$classId") {
-
-                    }
-                    if (response.status.isSuccess()) {
-                        val items: List<ReviewItem> = response.body()
-                        _uiState.value = ReviewUiState.Success(items)
-                    } else {
-                        _uiState.value = ReviewUiState.Error("Failed to fetch reviews")
+            combine(repository.state, classId) { state, selected ->
+                state.sessions.filter { it.classId == selected }.flatMap { session ->
+                    session.students.filter { it.status == "UNDER_REVIEW" }.map {
+                        ReviewItem(session.sessionId, it.studentId, it.name, it.reasons.joinToString("; "))
                     }
                 }
-            } catch (e: Exception) {
-                _uiState.value = ReviewUiState.Error(e.message ?: "Unknown error")
-            }
+            }.collect { _uiState.value = ReviewUiState.Success(it) }
         }
     }
-
-        fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String) {
-        val cid = currentClassId ?: return
+    fun loadPendingReviews(classId: String) { this.classId.value = classId; repository.refresh() }
+    fun overrideAttendance(recordId: String, studentId: String, newStatus: String, reason: String) {
         viewModelScope.launch {
-            try {
-                attendanceDao.insertRecord(
-                    com.attendance.app.core.data.local.room.AttendanceRecordEntity(
-                        id = java.util.UUID.randomUUID().toString(),
-                        classId = cid,
-                        studentId = studentId,
-                        timestamp = System.currentTimeMillis(),
-                        isPresent = newStatus == "PRESENT",
-                        method = "MANUAL_",
-                        syncStatus = "PENDING"
-                    )
-                )
-                // Remove from local list
-                val currentState = _uiState.value
-                if (currentState is ReviewUiState.Success) {
-                    val updatedList = currentState.items.filterNot { it.recordId == recordId || it.studentId == studentId }
-                    _uiState.value = ReviewUiState.Success(updatedList)
-                }
-            } catch (e: Exception) {
-                // Ignore error for now
-            }
+            runCatching { repository.overrideStudent(recordId, studentId, newStatus, reason) }
+                .onFailure { _uiState.value = ReviewUiState.Error(it.message ?: "Unable to save override.") }
         }
     }
 }
-
 sealed class ReviewUiState {
-    object Loading : ReviewUiState()
+    data object Loading : ReviewUiState()
     data class Success(val items: List<ReviewItem>) : ReviewUiState()
     data class Error(val message: String) : ReviewUiState()
 }
-
 @kotlinx.serialization.Serializable
-data class ReviewItem(
-    val recordId: String,
-    val studentId: String,
-    val studentName: String,
-    val issueType: String
-)
-
-
-
-
+data class ReviewItem(val recordId: String, val studentId: String, val studentName: String, val issueType: String)

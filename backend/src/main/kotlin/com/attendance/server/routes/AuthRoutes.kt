@@ -1,4 +1,4 @@
-﻿package com.attendance.server.routes
+package com.attendance.server.routes
 
 import com.attendance.server.services.AuthService
 import com.attendance.shared.dto.*
@@ -17,7 +17,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerStudent(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
             }
         }
 
@@ -27,7 +27,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerTeacher(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
             }
         }
 
@@ -37,7 +37,7 @@ fun Route.authRoutes() {
                 val response = AuthService.registerHod(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
             }
         }
 
@@ -66,9 +66,9 @@ fun Route.authRoutes() {
                 val result = AuthService.requestDeviceTransferAuth(req)
                 call.respond(HttpStatusCode.OK, result)
             } catch (e: SecurityException) {
-                call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                call.respond(HttpStatusCode.BadRequest, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
             }
         }
 
@@ -95,7 +95,7 @@ private suspend fun handleLogin(call: ApplicationCall) {
         val response = AuthService.initiateLogin(request)
         call.respond(HttpStatusCode.OK, response)
     } catch (e: Exception) {
-        val msg = e.message ?: "Failed"
+        val msg = publicError(e)
         if (msg == "DEVICE_MISMATCH") {
             call.respond(HttpStatusCode.Forbidden, com.attendance.server.plugins.ErrorResponse("DEVICE_MISMATCH", msg))
         } else if (msg == "PENDING_APPROVAL") {

@@ -62,6 +62,11 @@ fun TeacherClassDetailScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            OutlinedButton(onClick = {
+                navController.navigate(com.attendance.app.core.ui.navigation.Screen.TeacherClassHistory(classId))
+            }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("View class attendance history")
+            }
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Pending") })
                 Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Approved") })

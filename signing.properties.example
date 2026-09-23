@@ -1,0 +1,7 @@
+# Copy to signing.properties, which is ignored by Git. Keep the original release
+# keystore and credentials in secure storage to preserve Android update signing.
+# Paths resolve from the repository root; use forward slashes for Windows paths.
+storeFile=app/attendance_release.keystore
+storePassword=REPLACE_WITH_PRIVATE_STORE_PASSWORD
+keyAlias=attendanceKey
+keyPassword=REPLACE_WITH_PRIVATE_KEY_PASSWORD

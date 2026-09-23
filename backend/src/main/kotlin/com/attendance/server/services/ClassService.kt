@@ -11,6 +11,7 @@ object ClassService {
 
     fun createClass(teacherId: UUID, request: CreateClassRequest): ClassResponse {
         return transaction {
+            AccessControl.requireRole(teacherId, AccessControl.staffRoles)
             // Ensure teacher exists
             val teacher = Users.select { Users.id eq teacherId }.firstOrNull()
                 ?: throw IllegalArgumentException("Teacher not found")
@@ -56,6 +57,7 @@ object ClassService {
 
     fun joinClass(studentId: UUID, request: JoinClassRequest): JoinRequestResponse {
         return transaction {
+            AccessControl.requireRole(studentId, setOf("STUDENT"))
             val student = Users.select { Users.id eq studentId }.firstOrNull()
                 ?: throw IllegalArgumentException("Student not found")
 
@@ -95,6 +97,7 @@ object ClassService {
 
     fun getTeacherClasses(teacherId: UUID): List<ClassResponse> {
         return transaction {
+            AccessControl.requireRole(teacherId, AccessControl.staffRoles)
             val query = Classes.innerJoin(Users).select { (Classes.teacherId eq teacherId) and (Classes.isActive eq true) }
             query.map { row ->
                 val studentCount = ClassMembers.select { ClassMembers.classId eq row[Classes.id] }.count().toInt()
@@ -116,6 +119,7 @@ object ClassService {
 
     fun getStudentClasses(studentId: UUID): List<ClassResponse> {
         return transaction {
+            AccessControl.requireRole(studentId, setOf("STUDENT"))
             val activeQuery = ClassMembers
                 .innerJoin(Classes, onColumn = { ClassMembers.classId }, otherColumn = { Classes.id })
                 .innerJoin(Users, onColumn = { Classes.teacherId }, otherColumn = { Users.id })
@@ -162,8 +166,9 @@ object ClassService {
         }
     }
 
-    fun removeStudent(classId: UUID, studentId: UUID) {
+    fun removeStudent(classId: UUID, studentId: UUID, actorId: UUID) {
         transaction {
+            AccessControl.requireClassOwner(actorId, classId)
             ClassMembers.update({ (ClassMembers.classId eq classId) and (ClassMembers.studentId eq studentId) }) {
                 it[status] = "REMOVED"
             }
@@ -173,16 +178,18 @@ object ClassService {
         }
     }
 
-    fun deleteClass(classId: UUID) {
+    fun deleteClass(classId: UUID, actorId: UUID) {
         transaction {
+            AccessControl.requireClassOwner(actorId, classId)
             Classes.update({ Classes.id eq classId }) {
                 it[isActive] = false
             }
         }
     }
 
-    fun getAllRequests(classId: UUID): List<JoinRequestResponse> {
+    fun getAllRequests(classId: UUID, actorId: UUID): List<JoinRequestResponse> {
         return transaction {
+            AccessControl.requireClassOwner(actorId, classId)
             val query = ClassJoinRequests.innerJoin(Users, onColumn = { ClassJoinRequests.studentId }, otherColumn = { Users.id })
                 .select { ClassJoinRequests.classId eq classId }
             query.map { row ->
@@ -198,8 +205,9 @@ object ClassService {
         }
     }
 
-    fun getPendingRequests(classId: UUID): List<JoinRequestResponse> {
+    fun getPendingRequests(classId: UUID, actorId: UUID): List<JoinRequestResponse> {
         return transaction {
+            AccessControl.requireClassOwner(actorId, classId)
             val query = ClassJoinRequests.innerJoin(Users, onColumn = { ClassJoinRequests.studentId }, otherColumn = { Users.id })
                 .select { (ClassJoinRequests.classId eq classId) and (ClassJoinRequests.status eq "PENDING") }
             query.map { row ->
@@ -215,24 +223,34 @@ object ClassService {
         }
     }
 
-    fun rejectRequest(requestId: UUID) {
+    fun rejectRequest(requestId: UUID, actorId: UUID) {
         transaction {
+            val request = ClassJoinRequests.select { ClassJoinRequests.id eq requestId }.singleOrNull()
+                ?: throw IllegalArgumentException("Request not found")
+            AccessControl.requireClassOwner(actorId, request[ClassJoinRequests.classId])
+            require(request[ClassJoinRequests.status] == "PENDING") { "Request is no longer pending" }
             ClassJoinRequests.update({ ClassJoinRequests.id eq requestId }) {
                 it[status] = "REJECTED"
             }
         }
     }
 
-    fun approveRequest(requestId: UUID) {
+    fun approveRequest(requestId: UUID, actorId: UUID) {
         transaction {
             val request = ClassJoinRequests.select { ClassJoinRequests.id eq requestId }.firstOrNull()
                 ?: throw IllegalArgumentException("Request not found")
-                
+            AccessControl.requireClassOwner(actorId, request[ClassJoinRequests.classId])
+            require(request[ClassJoinRequests.status] == "PENDING") { "Request is no longer pending" }
             ClassJoinRequests.update({ ClassJoinRequests.id eq requestId }) {
                 it[status] = "APPROVED"
             }
             
-            ClassMembers.insert {
+            val existing = ClassMembers.select { (ClassMembers.classId eq request[ClassJoinRequests.classId]) and
+                (ClassMembers.studentId eq request[ClassJoinRequests.studentId]) }.singleOrNull()
+            if (existing != null) ClassMembers.update({ ClassMembers.id eq existing[ClassMembers.id] }) {
+                it[status] = "ACTIVE"
+                it[approvedAt] = Instant.now()
+            } else ClassMembers.insert {
                 it[classId] = request[ClassJoinRequests.classId]
                 it[studentId] = request[ClassJoinRequests.studentId]
                 it[status] = "ACTIVE"

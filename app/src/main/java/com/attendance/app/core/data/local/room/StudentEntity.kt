@@ -3,9 +3,8 @@ package com.attendance.app.core.data.local.room
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "students")
+@Entity(tableName = "students", primaryKeys = ["classId", "id"])
 data class StudentEntity(
-    @PrimaryKey
     val id: String,
     val classId: String,
     val studentName: String,

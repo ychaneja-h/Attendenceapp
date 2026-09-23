@@ -15,5 +15,7 @@ data class ClassEntity(
     val classCode: String,
     val teacherName: String,
     val studentCount: Int,
-    val isActive: Boolean
+    val isActive: Boolean,
+    @androidx.room.ColumnInfo(defaultValue = "'PENDING'")
+    val memberStatus: String = "PENDING"
 )

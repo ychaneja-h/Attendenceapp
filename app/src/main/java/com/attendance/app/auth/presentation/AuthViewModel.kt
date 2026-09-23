@@ -17,16 +17,17 @@ class AuthViewModel(
         private set
     var error by mutableStateOf<String?>(null)
 
-        var resetSuccess by mutableStateOf(false)
+    var resetSuccess by mutableStateOf(false)
         private set
 
         fun getRole(): String? = repository.getRole()
 
-        fun changePassword(newPassword: String, faceEmbedding: FloatArray) {
+    fun changePassword(newPassword: String, currentPassword: String) {
+        if (isLoading) return
         viewModelScope.launch {
             isLoading = true
             error = null
-            val result = repository.changePassword(newPassword, faceEmbedding)
+            val result = repository.changePassword(newPassword, currentPassword)
             result.onSuccess {
                 resetSuccess = true
             }

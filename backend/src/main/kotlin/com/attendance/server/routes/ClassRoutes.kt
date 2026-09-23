@@ -1,4 +1,4 @@
-﻿package com.attendance.server.routes
+package com.attendance.server.routes
 
 import com.attendance.server.services.ClassService
 import com.attendance.shared.dto.CreateClassRequest
@@ -26,7 +26,8 @@ fun Route.classRoutes() {
                     val response = ClassService.createClass(teacherId, request)
                     call.respond(HttpStatusCode.Created, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to create class")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
             
@@ -37,7 +38,8 @@ fun Route.classRoutes() {
                     val classes = ClassService.getTeacherClasses(teacherId)
                     call.respond(HttpStatusCode.OK, classes)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch classes")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
@@ -51,7 +53,8 @@ fun Route.classRoutes() {
                     val response = ClassService.joinClass(studentId, request)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to join class")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
             
@@ -62,47 +65,52 @@ fun Route.classRoutes() {
                     val classes = ClassService.getStudentClasses(studentId)
                     call.respond(HttpStatusCode.OK, classes)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch classes")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             get("/{id}/pending") {
                 try {
                     val classId = UUID.fromString(call.parameters["id"])
-                    val requests = ClassService.getPendingRequests(classId)
+                    val requests = ClassService.getPendingRequests(classId, call.actorId())
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch pending requests")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             get("/{id}/roster") {
                 try {
                     val classId = UUID.fromString(call.parameters["id"])
-                    val requests = ClassService.getAllRequests(classId)
+                    val requests = ClassService.getAllRequests(classId, call.actorId())
                     call.respond(HttpStatusCode.OK, requests)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to fetch roster")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             post("/approve/{reqId}") {
                 try {
                     val reqId = UUID.fromString(call.parameters["reqId"])
-                    ClassService.approveRequest(reqId)
+                    ClassService.approveRequest(reqId, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to approve request")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
 
             post("/reject/{reqId}") {
                 try {
                     val reqId = UUID.fromString(call.parameters["reqId"])
-                    ClassService.rejectRequest(reqId)
+                    ClassService.rejectRequest(reqId, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to reject request")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
             
@@ -110,20 +118,22 @@ fun Route.classRoutes() {
                 try {
                     val classId = UUID.fromString(call.parameters["id"])
                     val studentId = UUID.fromString(call.parameters["studentId"])
-                    ClassService.removeStudent(classId, studentId)
+                    ClassService.removeStudent(classId, studentId, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to remove student")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
             
             delete("/{id}") {
                 try {
                     val classId = UUID.fromString(call.parameters["id"])
-                    ClassService.deleteClass(classId)
+                    ClassService.deleteClass(classId, call.actorId())
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (e.message ?: "Failed to delete class")))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.BadRequest, com.attendance.shared.dto.GenericResponse(error = (publicError(e))))
                 }
             }
             

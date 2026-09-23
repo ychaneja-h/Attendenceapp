@@ -10,6 +10,7 @@ object Users : Table("users") {
     val email = varchar("email", 200).default("")
     val phone = varchar("phone", 15).nullable()
     val passwordHash = varchar("password_hash", 500)
+    val authVersion = integer("auth_version").default(0)
     val role = varchar("role", 20) // STUDENT, TEACHER, HOD, ADMIN
     val registrationStatus = varchar("registration_status", 30) // PENDING_PHONE_VERIFY, PENDING_APPROVAL, ACTIVE, SUSPENDED
     val departmentCode = varchar("department_code", 50).nullable()

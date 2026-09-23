@@ -1,104 +1,99 @@
 package com.attendance.app.ble.scanner
 
+import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
-import com.attendance.app.ble.advertiser.BleAdvertiserManager
+import androidx.core.content.ContextCompat
+import com.attendance.app.ble.AttendanceBlePacket
 
+/** The teacher only scans; a manufacturer/class filter also permits screen-off scanning. */
 class BleScannerManager(
     private val context: Context,
-    private val onDeviceFound: (ByteArray, Int) -> Unit // (Raw payload bytes, RSSI)
+    private val onDeviceFound: (ByteArray, Int) -> Unit,
+    private val onFailure: (String) -> Unit = {}
 ) {
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
-    private val scanner = bluetoothAdapter?.bluetoothLeScanner
-
+    private var activeScanner: android.bluetooth.le.BluetoothLeScanner? = null
+    private var callback: ScanCallback? = null
+    private var targetClassId: String? = null
     var isScanning = false
         private set
 
-    private var targetClassId: String? = null
+    @SuppressLint("MissingPermission")
+    fun startScanning(classId: String) {
+        if (isScanning && classId == targetClassId) return
+        stopScanning()
+        targetClassId = classId
+        try {
+            if (Build.VERSION.SDK_INT in Build.VERSION_CODES.Q..Build.VERSION_CODES.R &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                onFailure("Allow location access all the time in app settings to receive Bluetooth checks while the screen is off.")
+                return
+            }
+            val adapter = bluetoothManager.adapter
+            val scanner = adapter?.takeIf { it.isEnabled }?.bluetoothLeScanner
+            if (scanner == null) {
+                onFailure("Bluetooth scanning unavailable. Keep Bluetooth and its permissions enabled.")
+                return
+            }
+            val expectedHash = AttendanceBlePacket.hash(classId)
+            val filter = ScanFilter.Builder().setManufacturerData(
+                AttendanceBlePacket.MANUFACTURER_ID, expectedHash, ByteArray(4) { 0xff.toByte() }
+            ).build()
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setReportDelay(0L)
+                .build()
+            val newCallback = object : ScanCallback() {
+                private fun accept(result: ScanResult) {
+                    if (callback !== this) return
+                    val payload = result.scanRecord?.getManufacturerSpecificData(AttendanceBlePacket.MANUFACTURER_ID) ?: return
+                    val check = AttendanceBlePacket.decode(payload) ?: return
+                    if (!check.classHash.contentEquals(expectedHash)) return
+                    // Offline phones may have different clocks; the teacher records reception time.
+                    onDeviceFound(payload, result.rssi)
+                }
 
-    private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            super.onScanResult(callbackType, result)
-            result?.let {
-                val payloadData = it.scanRecord?.getManufacturerSpecificData(0x00E0)
-
-                if (payloadData != null && payloadData.size >= 24) {
-                    // If targetClassId is set, verify it
-                    if (targetClassId != null && !BleAdvertiserManager.matchesClassId(payloadData, targetClassId!!)) {
-                        return // Reject payloads not matching our class
-                    }
-
-                    // Validate timestamp
-                    if (!BleAdvertiserManager.isTimestampValid(payloadData)) {
-                        Log.d("BleScanner", "Rejected payload due to invalid timestamp")
-                        return // Reject old payloads
-                    }
-
-                    Log.d("BleScanner", "Found valid student payload (${payloadData.size} bytes) RSSI: ${it.rssi}")
-                    onDeviceFound(payloadData, it.rssi)
+                override fun onScanResult(callbackType: Int, result: ScanResult) = accept(result)
+                override fun onBatchScanResults(results: MutableList<ScanResult>) = results.forEach(::accept)
+                override fun onScanFailed(errorCode: Int) {
+                    if (callback !== this) return
+                    isScanning = false
+                    onFailure("Bluetooth scan interrupted (error $errorCode). Retrying automatically.")
                 }
             }
-        }
-
-        override fun onScanFailed(errorCode: Int) {
-            super.onScanFailed(errorCode)
-            Log.e("BleScanner", "Scan failed: $errorCode")
-            isScanning = false
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    fun startScanning(classId: String? = null) {
-        targetClassId = classId
-        if (scanner == null) {
-            Log.e("BleScanner", "BLE Scanner not available")
-            return
-        }
-        if (bluetoothAdapter?.isEnabled != true) {
-            Log.e("BleScanner", "Bluetooth is not enabled")
-            return
-        }
-
-        val scanFilters: List<ScanFilter> = emptyList()
-
-        val scanSettings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
-            .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-            .build()
-
-        try {
-            scanner.startScan(scanFilters, scanSettings, scanCallback)
+            activeScanner = scanner
+            callback = newCallback
             isScanning = true
-            Log.d("BleScanner", "Started scanning for student beacons...")
-        } catch (e: Exception) {
-            Log.e("BleScanner", "Error starting scanner", e)
-            isScanning = false
+            scanner.startScan(listOf(filter), settings, newCallback)
+        } catch (error: RuntimeException) {
+            stopScanning()
+            Log.e("AttendanceScanner", "Unable to start attendance scan", error)
+            onFailure("Bluetooth scan could not start. Check Bluetooth and permissions.")
         }
     }
 
     @SuppressLint("MissingPermission")
     fun stopScanning() {
-        if (isScanning && scanner != null) {
+        val previous = callback
+        callback = null
+        if (previous != null) {
             try {
-                scanner.stopScan(scanCallback)
-            } catch (e: Exception) {
-                Log.e("BleScanner", "Error stopping scanner", e)
+                activeScanner?.stopScan(previous)
+            } catch (error: RuntimeException) {
+                Log.w("AttendanceScanner", "Unable to stop attendance scan", error)
             }
-            isScanning = false
-            Log.d("BleScanner", "Stopped scanning.")
         }
-    }
-
-    companion object {
-        const val APP_SERVICE_UUID = "0000A1B2-0000-1000-8000-00805F9B34FB"
+        activeScanner = null
+        isScanning = false
     }
 }

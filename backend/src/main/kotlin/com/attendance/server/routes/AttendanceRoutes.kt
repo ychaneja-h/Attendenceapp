@@ -1,4 +1,4 @@
-﻿package com.attendance.server.routes
+package com.attendance.server.routes
 
 import com.attendance.server.services.AttendanceService
 import com.attendance.server.services.SyncRecordRequest
@@ -25,6 +25,7 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
             post("/start") {
                 try {
                     val request = call.receive<StartSessionRequest>()
+                    call.requireClassOwner(request.classId)
                     val principal = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()
                     val teacherId = principal!!.payload.getClaim("userId").asString()
                     val sessionId = attendanceService.startSession(
@@ -35,7 +36,8 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     )
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(sessionId = sessionId.toString()))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             
@@ -43,31 +45,35 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                 try {
                     val request = call.receive<Map<String, String>>()
                     val classId = request["classId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    call.requireClassOwner(classId)
                     attendanceService.stopSession(classId)
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
 
             post("/session/{sessionId}/stop") {
                 try {
                     val sessionId = call.parameters["sessionId"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    val actor = call.actorId()
+                    org.jetbrains.exposed.sql.transactions.transaction {
+                        val session = com.attendance.server.models.AttendanceSessions.selectAll().where {
+                            com.attendance.server.models.AttendanceSessions.id eq java.util.UUID.fromString(sessionId)
+                        }.singleOrNull() ?: throw IllegalArgumentException("Session not found")
+                        com.attendance.server.services.AccessControl.requireClassOwner(actor, session[com.attendance.server.models.AttendanceSessions.classId])
+                    }
                     attendanceService.stopSession(java.util.UUID.fromString(sessionId))
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
 
             post("/sync") {
-                try {
-                    val records = call.receive<List<SyncRecordRequest>>()
-                    val responses = attendanceService.syncRecords(records)
-                    call.respond(HttpStatusCode.OK, responses)
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
-                }
+                call.respond(HttpStatusCode.Gone, com.attendance.shared.dto.GenericResponse(error = "Update the app to synchronize verified Plan A attendance evidence."))
             }
 
             get("/class/{classId}/student/today") {
@@ -79,37 +85,45 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val status = attendanceService.getStudentTodayStatus(java.util.UUID.fromString(classId), java.util.UUID.fromString(studentId))
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(status = status))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             
             get("/live/{classId}") {
                 try {
                     val classId = call.parameters["classId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    call.requireClassOwner(classId)
                     val response = attendanceService.getLiveSession(classId)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             
             post("/override") {
                 try {
                     val request = call.receive<OverrideRequest>()
+                    call.requireClassOwner(request.classId)
+                    require(request.status in setOf("PRESENT", "ABSENT")) { "Invalid attendance decision" }
                     attendanceService.overrideStatus(request.classId, request.studentId, request.status, request.reason)
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             
             get("/reviews/{classId}") {
                 try {
                     val classId = call.parameters["classId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    call.requireClassOwner(classId)
                     val response = attendanceService.getReviews(classId)
                     call.respond(HttpStatusCode.OK, response)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
         }
@@ -121,20 +135,28 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val classId = call.parameters["classId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
                     val studentId = call.parameters["studentId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
                     val month = call.request.queryParameters["month"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val actor = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                    if (!attendanceService.canReadReport(actor, classId, studentId)) return@get call.respond(HttpStatusCode.Forbidden)
                     val csvString = attendanceService.getStudentMonthReportCsv(java.util.UUID.fromString(classId), java.util.UUID.fromString(studentId), month)
                     call.respondText(csvString, ContentType.Text.CSV)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             get("/class/{classId}/csv") {
                 try {
                     val classId = call.parameters["classId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
                     val month = call.request.queryParameters["month"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val actor = call.principal<io.ktor.server.auth.jwt.JWTPrincipal>()?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                    if (!attendanceService.canReadReport(actor, classId)) return@get call.respond(HttpStatusCode.Forbidden)
                     val csvString = attendanceService.getClassMonthReportCsv(java.util.UUID.fromString(classId), month)
                     call.respondText(csvString, ContentType.Text.CSV)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
             get("/class/{classId}/student/today") {
@@ -146,22 +168,12 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val cid = java.util.UUID.fromString(classId)
                     val sid = java.util.UUID.fromString(studentIdStr)
                     
-                    val status = org.jetbrains.exposed.sql.transactions.transaction {
-                        val todayStart = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS)
-                        val session = com.attendance.server.models.AttendanceSessions.selectAll()
-                            .where { (com.attendance.server.models.AttendanceSessions.classId eq cid) and (com.attendance.server.models.AttendanceSessions.startedAt greaterEq todayStart) }
-                            .firstOrNull() ?: return@transaction "NO_SESSION"
-                            
-                        val record = com.attendance.server.models.AttendanceRecords.selectAll()
-                            .where { (com.attendance.server.models.AttendanceRecords.sessionId eq session[com.attendance.server.models.AttendanceSessions.id]) and (com.attendance.server.models.AttendanceRecords.studentId eq sid) }
-                            .firstOrNull() ?: return@transaction "ABSENT"
-                            
-                        record[com.attendance.server.models.AttendanceRecords.finalStatus]
-                    }
+                    val status = attendanceService.getStudentTodayStatus(cid, sid, includeChecks = false) ?: "NO_SESSION"
                     
                     call.respond(io.ktor.http.HttpStatusCode.OK, mapOf("status" to status))
                 } catch (e: Exception) {
-                    call.respond(io.ktor.http.HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(io.ktor.http.HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
 
@@ -173,7 +185,8 @@ fun Route.attendanceRoutes(attendanceService: AttendanceService) {
                     val summary = attendanceService.getStudentSummary(java.util.UUID.fromString(studentId), month)
                     call.respond(HttpStatusCode.OK, summary)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", e.message ?: "Failed"))
+                    if (e is SecurityException) throw e
+                    call.respond(HttpStatusCode.InternalServerError, com.attendance.server.plugins.ErrorResponse("ERROR", publicError(e)))
                 }
             }
         }

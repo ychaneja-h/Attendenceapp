@@ -1,9 +1,15 @@
 ﻿package com.attendance.app.core.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.toRoute
 import com.attendance.app.auth.ui.RoleSelectionScreen
 import com.attendance.app.auth.ui.*
@@ -19,6 +25,19 @@ import com.attendance.app.auth.data.TokenManager
 fun AppNavHost() {
     val navController = rememberNavController()
     val tokenManager = koinInject<TokenManager>()
+    val attendanceRepository = koinInject<com.attendance.app.core.data.attendance.AttendanceRepository>()
+    val attendance by attendanceRepository.state.collectAsState()
+    val currentEntry by navController.currentBackStackEntryAsState()
+
+    // Reopening into Home or using another app route cannot bypass unfinished face checkout.
+    LaunchedEffect(attendance.activeStudentAttempt?.attemptId, currentEntry) {
+        val active = attendance.activeStudentAttempt ?: return@LaunchedEffect
+        val destination = currentEntry?.destination ?: return@LaunchedEffect
+        if (tokenManager.getRole()?.uppercase() == "STUDENT" &&
+            !destination.hasRoute<Screen.StudentClassDetail>() && !destination.hasRoute<Screen.FaceVerification>()) {
+            navController.navigate(Screen.StudentClassDetail(active.classId)) { launchSingleTop = true }
+        }
+    }
     
     val token = tokenManager.getToken()
     val role = tokenManager.getRole()
@@ -66,9 +85,15 @@ fun AppNavHost() {
                 onAdminLogin = { navController.navigate(Screen.AdminLogin) }
             )
         }
-                composable<Screen.ChangePassword> {
+        composable<Screen.ChangePassword> {
             com.attendance.app.auth.ui.ChangePasswordScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onPasswordChanged = {
+                    navController.navigate(Screen.RoleSelection) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable<Screen.StudentLogin> {
@@ -153,6 +178,9 @@ fun AppNavHost() {
         composable<Screen.TeacherHistory> {
             TeacherHistoryScreen(navController = navController)
         }
+        composable<Screen.TeacherClassHistory> { entry ->
+            TeacherHistoryScreen(navController = navController, classId = entry.toRoute<Screen.TeacherClassHistory>().classId)
+        }
         composable<Screen.TeacherProfile> {
             TeacherProfileScreen(navController = navController)
         }
@@ -172,7 +200,7 @@ fun AppNavHost() {
         }
         composable<Screen.LiveSession> { backStackEntry ->
             val args = backStackEntry.toRoute<Screen.LiveSession>()
-            com.attendance.app.teacher.ui.LiveSessionScreen(classId = args.classId, navController = navController, historyStartTime = if (args.startTime > 0L) args.startTime else null)
+            com.attendance.app.teacher.ui.LiveSessionScreen(classId = args.classId, navController = navController, sessionId = args.sessionId, isHistory = args.isHistory)
         }
 
         // HOD screens
@@ -218,14 +246,22 @@ fun AppNavHost() {
         
         composable<Screen.FaceVerification> { backStackEntry ->
             val args = backStackEntry.toRoute<Screen.FaceVerification>()
+            val context = LocalContext.current
+            val attendanceViewModel: com.attendance.app.student.presentation.StudentAttendanceViewModel = org.koin.androidx.compose.koinViewModel()
+            val saveError by attendanceViewModel.faceSaveError.collectAsState()
+            val isSaving by attendanceViewModel.isSavingFace.collectAsState()
             com.attendance.app.face.ui.FaceVerificationScreen(
                 onBack = { navController.popBackStack() },
-                onVerificationSuccess = {
-                    // Navigate back with success result to home screen
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("verified_class_id", args.classId)
-                    navController.popBackStack()
+                isCheckOut = args.isCheckOut,
+                saveError = saveError,
+                isSaving = isSaving,
+                onVerificationSuccess = { verifiedAtMs, verifiedElapsedMs ->
+                    attendanceViewModel.onFaceVerificationSuccess(
+                        args.classId, context, args.isCheckOut, verifiedAtMs, verifiedElapsedMs
+                    ) {
+                        // The scan is durable before leaving the camera screen.
+                        navController.popBackStack()
+                    }
                 }
             )
         }

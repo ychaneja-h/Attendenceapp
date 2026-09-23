@@ -1,5 +1,7 @@
 *.iml
 .gradle
+.kotlin/
+/plan-a-validation.log
 /local.properties
 /.idea
 .DS_Store
@@ -14,3 +16,7 @@ local.properties
 /app/schemas
 *.apk
 *.aab
+# Release signing material is private and must not be included in source control.
+/signing.properties
+*.keystore
+*.jks

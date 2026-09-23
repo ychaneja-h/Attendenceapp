@@ -15,7 +15,9 @@ class AttendanceApplication : Application() {
         startKoin {
             androidLogger(Level.ERROR)
             androidContext(this@AttendanceApplication)
-            modules(appModule, dataModule, networkModule)
+            modules(appModule, networkModule)
         }
+        org.koin.java.KoinJavaComponent.getKoin()
+            .get<com.attendance.app.core.data.attendance.AttendanceRepository>().initialize()
     }
 }

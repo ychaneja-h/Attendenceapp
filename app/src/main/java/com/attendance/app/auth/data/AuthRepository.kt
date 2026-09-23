@@ -122,14 +122,16 @@ class AuthRepository(
         }
     }
 
-    suspend fun changePassword(newPassword: String, faceEmbedding: FloatArray): Result<Unit> {
+    suspend fun changePassword(newPassword: String, currentPassword: String): Result<Unit> {
         return try {
             if (tokenManager.getToken() == null) return Result.failure(Exception("Not logged in"))
             val response = httpClient.post("${Constants.BASE_URL}/users/change-password") {
                 contentType(ContentType.Application.Json)
-                setBody(com.attendance.shared.dto.ChangePasswordRequest(newPassword, faceEmbedding.toList()))
+                setBody(com.attendance.shared.dto.ChangePasswordRequest(newPassword, emptyList(), currentPassword))
             }
             if (response.status.isSuccess()) {
+                // The server increments auth_version on success, invalidating all existing JWTs.
+                tokenManager.clear()
                 Result.success(Unit)
             } else {
                 val errorText = response.bodyAsText()

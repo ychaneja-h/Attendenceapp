@@ -84,7 +84,8 @@ data class DeviceTransferAuthReq(
 @Serializable
 data class ChangePasswordRequest(
     val newPassword: String,
-    val faceEmbedding: List<Float>
+    val faceEmbedding: List<Float>,
+    val currentPassword: String = ""
 )
 
 @Serializable

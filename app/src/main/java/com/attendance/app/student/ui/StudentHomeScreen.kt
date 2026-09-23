@@ -34,11 +34,12 @@ fun StudentHomeScreen(
     navController: NavController,
     profileViewModel: ProfileViewModel = koinViewModel(),
     classViewModel: ClassViewModel = koinViewModel(),
+    attendanceViewModel: com.attendance.app.student.presentation.StudentAttendanceViewModel = koinViewModel(),
     httpClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
 ) {
     val uiState by profileViewModel.uiState.collectAsState()
+    val attendanceState by attendanceViewModel.state.collectAsState()
 
-    val summary by profileViewModel.studentSummary.collectAsState()
     val classes by classViewModel.classes.collectAsState()
     var showJoinDialog by remember { mutableStateOf(false) }
 
@@ -51,50 +52,12 @@ fun StudentHomeScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 profileViewModel.loadProfile()
                 classViewModel.fetchStudentClasses()
+                attendanceViewModel.resumeAttendance(context)
                 
                 // Sync face status quietly in background
                 scope.launch {
                     try {
-                        val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
-                        val response = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/requests/me")
-                        if (response.status.value in 200..299) {
-                            val array = org.json.JSONArray(response.bodyAsText())
-                            var hasPending = false
-                            var latestApproved: org.json.JSONObject? = null
-                            for (i in 0 until array.length()) {
-                                val req = array.getJSONObject(i)
-                                if (req.getString("requestType") == "FACE_REGISTRATION") {
-                                    val status = req.getString("status")
-                                    if (status == "PENDING") {
-                                        hasPending = true
-                                        break
-                                    } else if (status == "APPROVED" && latestApproved == null) {
-                                        latestApproved = req
-                                    }
-                                }
-                            }
-                                                                                    if (hasPending) {
-                                prefs.edit().putBoolean("face_approval_pending", true).apply()
-                            } else if (latestApproved != null) {
-                                prefs.edit().putBoolean("face_approval_pending", false).apply()
-                                val pendingFace = prefs.getString("pending_face_embedding", null)
-                                if (pendingFace != null) {
-                                    prefs.edit().putString("registered_face_embedding", pendingFace).remove("pending_face_embedding").apply()
-                                }
-                            }
-                            
-                            // If we still don't have a registered face locally, try to fetch it from backend
-                            if (prefs.getString("registered_face_embedding", null) == null) {
-                                val faceRes = httpClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/users/me/face")
-                                if (faceRes.status.value in 200..299) {
-                                    val obj = org.json.JSONObject(faceRes.bodyAsText())
-                                    val embed = obj.optString("faceEmbedding", "")
-                                    if (embed.isNotEmpty()) {
-                                        prefs.edit().putString("registered_face_embedding", embed).apply()
-                                    }
-                                }
-                            }
-                        }
+                        com.attendance.app.face.syncApprovedFace(context, httpClient)
                     } catch (e: Exception) {
                         // Ignore background sync errors
                     }
@@ -173,40 +136,21 @@ fun StudentHomeScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text("This Month's Attendance", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (summary != null) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("Present", color = Color(0xFF2E7D32), style = MaterialTheme.typography.titleMedium)
-                                    Text("${summary!!.totalPresent}", color = Color(0xFF2E7D32), style = MaterialTheme.typography.headlineMedium)
-                                }
-                            }
-
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("Absent", color = Color(0xFFC62828), style = MaterialTheme.typography.titleMedium)
-                                    Text("${summary!!.totalAbsent}", color = Color(0xFFC62828), style = MaterialTheme.typography.headlineMedium)
-                                }
-                            }
-                        }
-                    } else {
-                        CircularProgressIndicator()
-                    }
                 }
             }
 
+            attendanceState.activeStudentAttempt?.let { attempt ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Attendance is still active", style = MaterialTheme.typography.titleMedium)
+                        Text("When your teacher stops the session, scan your face within five minutes to leave.")
+                        Button(onClick = { navController.navigate(Screen.StudentClassDetail(attempt.classId)) }) {
+                            Text("Return to active attendance")
+                        }
+                    }
+                }
+            }
+            attendanceState.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(modifier = Modifier.height(24.dp))
             Text("Enrolled Classes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
             Spacer(modifier = Modifier.height(8.dp))
@@ -241,7 +185,7 @@ fun StudentHomeScreen(
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Code: ${cls.id.substring(0, 5)} - Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Code: ${cls.id.take(5)} - Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
                                 Text("Teacher: ${cls.teacherName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }

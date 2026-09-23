@@ -13,12 +13,14 @@ fun Application.configureRouting() {
 
     routing {
         get("/health") {
+            call.response.headers.append("X-App-Version", "1.4.0")
             call.respondText("OK")
         }
         authRoutes()
         adminRoutes()
         classRoutes()
         attendanceRoutes(attendanceService)
+        planAAttendanceRoutes()
         userRoutes()
         hodRoutes()
         requestRoutes()

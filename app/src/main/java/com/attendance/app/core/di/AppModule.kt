@@ -31,12 +31,14 @@ val appModule = module {
             androidContext(),
             AppDatabase::class.java,
             "attendance_db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3).build()
     }
 
     single { get<AppDatabase>().classDao() }
     single { get<AppDatabase>().studentDao() }
     single { get<AppDatabase>().attendanceDao() }
+    single { get<AppDatabase>().planAAttendanceDao() }
+    single { com.attendance.app.core.data.attendance.AttendanceRepository(androidContext(), get(), get(), get()) }
 
     // Repositories
     single { TokenManager(androidContext()) }
@@ -47,12 +49,12 @@ val appModule = module {
     // ViewModels
     viewModel { AuthViewModel(get()) }
     viewModel { ClassViewModel(get()) }
-    viewModel { StudentAttendanceViewModel(get(), get(), get()) }
+    viewModel { StudentAttendanceViewModel(get()) }
 
-    viewModel { TeacherAttendanceViewModel(get(), get(), get()) }
-    viewModel { LiveSessionViewModel(get(), get(), get(), get()) }
-    viewModel { com.attendance.app.teacher.presentation.TeacherHistoryViewModel(get(), get()) }
-    viewModel { TeacherReviewsViewModel(get(), get(), get()) }
+    viewModel { TeacherAttendanceViewModel(get()) }
+    viewModel { LiveSessionViewModel(get()) }
+    viewModel { com.attendance.app.teacher.presentation.TeacherHistoryViewModel(get()) }
+    viewModel { TeacherReviewsViewModel(get()) }
     viewModel { ProfileViewModel(get()) }
     viewModel { com.attendance.app.face.presentation.FaceRegistrationViewModel(get()) }
     viewModel { com.attendance.app.hod.presentation.HodDashboardViewModel(get(), get()) }

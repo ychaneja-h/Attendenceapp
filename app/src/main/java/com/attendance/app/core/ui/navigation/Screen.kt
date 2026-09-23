@@ -28,13 +28,14 @@ sealed interface Screen {
     @Serializable data object TeacherClasses : Screen
     @Serializable data object TeacherReviews : Screen
     @Serializable data object TeacherHistory : Screen
+    @Serializable data class TeacherClassHistory(val classId: String) : Screen
     @Serializable data object TeacherProfile : Screen
     @Serializable data object CreateClass : Screen
     @Serializable data class TeacherClassDetail(val classId: String) : Screen
     @Serializable data class ClassMembers(val classId: String) : Screen
     @Serializable data class PendingRequests(val classId: String) : Screen
     @Serializable data class StartSession(val classId: String) : Screen
-    @Serializable data class LiveSession(val classId: String, val interval: Int = 1, val minChecks: Int = 3, val startTime: Long = 0L) : Screen
+    @Serializable data class LiveSession(val classId: String, val interval: Int = 5, val minChecks: Int = 3, val startTime: Long = 0L, val sessionId: String? = null, val isHistory: Boolean = false) : Screen
     @Serializable data object TeacherRequests : Screen
 
     // HOD
@@ -53,7 +54,7 @@ sealed interface Screen {
 
     // Face
     @Serializable data object FaceEnrollment : Screen
-    @Serializable data class FaceVerification(val classId: String) : Screen
+    @Serializable data class FaceVerification(val classId: String, val isCheckOut: Boolean = false) : Screen
 }
 
 

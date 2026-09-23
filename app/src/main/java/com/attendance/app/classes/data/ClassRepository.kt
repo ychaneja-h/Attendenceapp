@@ -1,4 +1,4 @@
-﻿package com.attendance.app.classes.data
+package com.attendance.app.classes.data
 
 import com.attendance.app.auth.data.TokenManager
 import com.attendance.shared.dto.ClassResponse
@@ -49,7 +49,8 @@ class ClassRepository(
                     classCode = it.classCode,
                     teacherName = it.teacherName,
                     studentCount = it.studentCount,
-                    isActive = it.isActive
+                    isActive = it.isActive,
+                    memberStatus = it.memberStatus
                 )
             }
         }
@@ -80,7 +81,7 @@ class ClassRepository(
                                 joinedAt = it.requestedAt
                             )
                         }
-                        studentDao.insertStudents(studentEntities)
+                        studentDao.replaceStudentsForClass(cls.id, studentEntities)
                     }
                 }
                 
@@ -122,7 +123,8 @@ class ClassRepository(
                 classCode = it.classCode,
                 teacherName = it.teacherName,
                 studentCount = it.studentCount,
-                isActive = it.isActive
+                isActive = it.isActive,
+                memberStatus = it.memberStatus
             )
         }
         classDao.replaceAllClasses(entities)
@@ -198,7 +200,14 @@ class ClassRepository(
 
             }
             if (response.status.isSuccess()) {
-                Result.success(response.body())
+                val roster: List<JoinRequestResponse> = response.body()
+                studentDao.replaceStudentsForClass(classId, roster.map {
+                    com.attendance.app.core.data.local.room.StudentEntity(
+                        id = it.studentId, classId = classId, studentName = it.studentName,
+                        collegeId = it.collegeId, status = it.status, joinedAt = it.requestedAt
+                    )
+                })
+                Result.success(roster)
             } else {
                 Result.failure(Exception("Failed to fetch roster: ${response.status}"))
             }
@@ -252,6 +261,5 @@ class ClassRepository(
         }
     }
 }
-
 
 

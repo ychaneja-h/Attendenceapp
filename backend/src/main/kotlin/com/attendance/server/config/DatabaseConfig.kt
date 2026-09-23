@@ -1,4 +1,4 @@
-﻿package com.attendance.server.config
+package com.attendance.server.config
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -25,7 +25,7 @@ object DatabaseConfig {
             jdbcUrl = finalUrl
             driverClassName = "org.postgresql.Driver"
             username = System.getenv("DB_USER") ?: "postgres"
-            password = System.getenv("DB_PASSWORD") ?: "123456"
+            password = requireNotNull(System.getenv("DB_PASSWORD")) { "DB_PASSWORD must be configured" }
             maximumPoolSize = 3
             minimumIdle = 1
             isAutoCommit = false
@@ -60,11 +60,23 @@ object DatabaseConfig {
                 AuditLogs,
                 Notifications,
                 SyncQueue,
-                ApprovalRequests
+                ApprovalRequests,
+                PlanAEvents,
+                PlanATimeAnchors
             )
+            // Exposed 0.52 does not migrate varchar lengths for existing columns.
+            // Long sessions produce receipt IDs containing a UUID, attempt nonce and sequence.
+            val eventIdLength = exec("""
+                SELECT character_maximum_length FROM information_schema.columns
+                WHERE table_schema = current_schema() AND table_name = 'plan_a_events' AND column_name = 'id'
+            """.trimIndent()) { rows -> if (rows.next()) rows.getInt(1) else 128 } ?: 128
+            if (eventIdLength < 128) {
+                exec("ALTER TABLE plan_a_events ALTER COLUMN id TYPE VARCHAR(128)")
+            }
+            val hardeningSql = requireNotNull(DatabaseConfig::class.java.getResource("/db/harden-public.sql")) {
+                "Database security migration is missing"
+            }.readText()
+            exec(hardeningSql)
         }
     }
 }
-
-
-

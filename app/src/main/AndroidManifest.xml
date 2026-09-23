@@ -20,6 +20,9 @@
     <!-- Location (required for BLE scanning on Android 6-11) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Legacy Android requires this for device discovery while the teacher app is backgrounded. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        android:maxSdkVersion="30" />
 
     <!-- Camera -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -27,13 +30,12 @@
     <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Held only during a short BLE burst or while saving a received check. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Wi-Fi -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
@@ -61,11 +63,13 @@
         <service
             android:name=".ble.advertiser.BleAdvertiserService"
             android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="false"
             android:exported="false" />
 
         <service
             android:name=".ble.scanner.BleScannerService"
-            android:foregroundServiceType="connectedDevice"
+            android:foregroundServiceType="connectedDevice|location"
+            android:stopWithTask="false"
             android:exported="false" />
 
     </application>

@@ -1,4 +1,4 @@
-﻿package com.attendance.app.teacher.ui
+package com.attendance.app.teacher.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -32,6 +32,8 @@ fun TeacherProfileScreen(
     val uiState by profileViewModel.uiState.collectAsState()
     val isSaving by profileViewModel.isSaving.collectAsState()
     val saveMessage by profileViewModel.saveMessage.collectAsState()
+    val attendanceRepository = org.koin.compose.koinInject<com.attendance.app.core.data.attendance.AttendanceRepository>()
+    val attendanceState by attendanceRepository.state.collectAsState()
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -127,7 +129,7 @@ fun TeacherProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             val context = LocalContext.current
-                        OutlinedButton(
+            OutlinedButton(
                 onClick = { navController.navigate(Screen.ChangePassword) },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -137,15 +139,19 @@ fun TeacherProfileScreen(
 
             OutlinedButton(
                 onClick = {
-                    com.attendance.app.ble.advertiser.BleAdvertiserService.stop(context)
+                    com.attendance.app.ble.scanner.BleScannerService.stop(context)
                     authViewModel.logout()
                     navController.navigate(Screen.RoleSelection) {
                         popUpTo(0) { inclusive = true }
                     }
                 }, 
+                enabled = attendanceState.activeTeacherSession == null,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Logout")
+            }
+            if (attendanceState.activeTeacherSession != null) {
+                Text("End your active attendance session before logging out.")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

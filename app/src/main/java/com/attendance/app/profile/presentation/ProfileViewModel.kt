@@ -27,9 +27,6 @@ class ProfileViewModel(
     private val _saveMessage = MutableStateFlow<String?>(null)
     val saveMessage: StateFlow<String?> = _saveMessage
 
-    private val _studentSummary = MutableStateFlow<com.attendance.app.profile.data.StudentSummaryResponse?>(null)
-    val studentSummary: StateFlow<com.attendance.app.profile.data.StudentSummaryResponse?> = _studentSummary
-
     init {
         loadProfile()
     }
@@ -44,11 +41,6 @@ class ProfileViewModel(
                 _uiState.value = ProfileUiState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
             }
             
-            // Also fetch summary if student
-            val summaryResult = repository.getStudentSummary()
-            if (summaryResult.isSuccess) {
-                _studentSummary.value = summaryResult.getOrNull()
-            }
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿package com.attendance.server.services
 
 import at.favre.lib.crypto.bcrypt.BCrypt
+import com.attendance.server.config.AuthConfig
 import com.attendance.server.models.*
 import com.attendance.shared.dto.*
 import com.attendance.shared.model.RegistrationStatus
@@ -15,39 +16,40 @@ import java.util.Date
 import java.util.UUID
 
 object AuthService {
-    private val jwtSecret = System.getenv("JWT_SECRET") ?: "dev-secret-change-in-production"
-    private val jwtIssuer = System.getenv("JWT_ISSUER") ?: "attendance-server"
-    private val jwtAudience = System.getenv("JWT_AUDIENCE") ?: "attendance-app"
+    private fun generateToken(userId: UUID, role: String, authVersion: Int = 0): String = JWT.create()
+        .withIssuer(AuthConfig.issuer)
+        .withAudience(AuthConfig.audience)
+        .withClaim("userId", userId.toString())
+        .withClaim("role", role)
+        .withClaim("authVersion", authVersion)
+        .withIssuedAt(Date.from(Instant.now()))
+        .withExpiresAt(Date.from(Instant.now().plus(7, ChronoUnit.DAYS)))
+        .sign(Algorithm.HMAC256(AuthConfig.secret))
 
-    private fun generateToken(userId: UUID, role: String): String {
-        return JWT.create()
-            .withIssuer(jwtIssuer)
-            .withAudience(jwtAudience)
-            .withClaim("userId", userId.toString())
-            .withClaim("role", role)
-            .withExpiresAt(Date.from(Instant.now().plus(7, ChronoUnit.DAYS)))
-            .sign(Algorithm.HMAC256(jwtSecret))
+    internal fun validateNewPassword(password: String) {
+        require(password.length >= 8 && password.toByteArray(Charsets.UTF_8).size <= 72) {
+            "Password must contain at least 8 characters and at most 72 UTF-8 bytes"
+        }
+    }
+
+    internal fun verifyCurrentPassword(password: String, passwordHash: String) {
+        if (password.isEmpty() || password.toByteArray(Charsets.UTF_8).size > 72 ||
+            !BCrypt.verifyer().verify(password.toCharArray(), passwordHash).verified) {
+            throw SecurityException("Current password is incorrect")
+        }
+    }
+
+    private fun validateRegistration(collegeId: String, name: String, password: String) {
+        require(collegeId.isNotBlank() && collegeId.length <= 50) { "Invalid college ID" }
+        require(name.isNotBlank() && name.length <= 200) { "Invalid name" }
+        validateNewPassword(password)
     }
 
     fun registerStudent(request: StudentRegisterRequest): AuthTokenResponse {
+        validateRegistration(request.collegeId, request.name, request.password)
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            if (existingUser != null) {
-                if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this College ID already exists")
-                }
-                // Return token for existing pending user
-                val uid = existingUser[Users.id]
-                val token = generateToken(uid, existingUser[Users.role])
-                return@transaction AuthTokenResponse(
-                    accessToken = token,
-                    refreshToken = token,
-                    role = existingUser[Users.role],
-                    userId = uid.toString(),
-                    name = existingUser[Users.name],
-                    requiresFaceEnrollment = true
-                )
-            }
+            require(existingUser == null) { "Account with this College ID already exists" }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
 
@@ -80,25 +82,13 @@ object AuthService {
     }
 
     fun registerHod(request: HodRegisterRequest): AuthTokenResponse {
+        validateRegistration(request.collegeId, request.name, request.password)
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            if (existingUser != null) {
-                if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this College ID already exists")
-                }
-                val uid = existingUser[Users.id]
-                return@transaction AuthTokenResponse(
-                    accessToken = "",
-                    refreshToken = "",
-                    role = UserRole.HOD.name,
-                    userId = uid.toString(),
-                    name = existingUser[Users.name],
-                    requiresFaceEnrollment = false
-                )
-            }
+            require(existingUser == null) { "Account with this College ID already exists" }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
-                throw Exception("Department Code already in use by another HOD")
+                throw IllegalArgumentException("Department Code already in use by another HOD")
             }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
@@ -128,25 +118,13 @@ object AuthService {
     }
 
     fun registerTeacher(request: TeacherRegisterRequest): AuthTokenResponse {
+        validateRegistration(request.collegeId, request.name, request.password)
         return transaction {
             val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            if (existingUser != null) {
-                if (existingUser[Users.registrationStatus] == RegistrationStatus.ACTIVE.name) {
-                    throw IllegalArgumentException("Account with this College ID already exists")
-                }
-                val uid = existingUser[Users.id]
-                return@transaction AuthTokenResponse(
-                    accessToken = "",
-                    refreshToken = "",
-                    role = UserRole.TEACHER.name,
-                    userId = uid.toString(),
-                    name = existingUser[Users.name],
-                    requiresFaceEnrollment = false
-                )
-            }
+            require(existingUser == null) { "Account with this College ID already exists" }
 
             if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
-                throw Exception("Invalid Department Code")
+                throw IllegalArgumentException("Invalid Department Code")
             }
 
             val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
@@ -174,19 +152,8 @@ object AuthService {
         }
     }
 
-        private fun cosineSimilarity(vectorA: List<Float>, vectorB: List<Float>): Float {
-        var dotProduct = 0.0
-        var normA = 0.0
-        var normB = 0.0
-        for (i in vectorA.indices) {
-            dotProduct += vectorA[i] * vectorB[i]
-            normA += vectorA[i] * vectorA[i]
-            normB += vectorB[i] * vectorB[i]
-        }
-        return (dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))).toFloat()
-    }
-
-        fun requestDeviceTransferAuth(request: DeviceTransferAuthReq): com.attendance.shared.dto.GenericResponse {
+    fun requestDeviceTransferAuth(request: DeviceTransferAuthReq): com.attendance.shared.dto.GenericResponse {
+        require(request.password.toByteArray().size in 1..72) { "Invalid credentials" }
         return transaction {
             val users = Users.select { Users.collegeId eq request.collegeId }.toList()
             if (users.isEmpty()) throw IllegalArgumentException("Invalid credentials")
@@ -208,9 +175,11 @@ object AuthService {
             }
 
             val studentId = user[Users.id]
+            AccessControl.requireRole(studentId, setOf("STUDENT"))
+            require(request.newDeviceId.isNotBlank() && request.newDeviceId.length <= 255) { "Invalid device ID" }
 
             // Find first enrolled class teacher
-            val classId = ClassMembers.select { ClassMembers.studentId eq studentId }
+            val classId = ClassMembers.select { (ClassMembers.studentId eq studentId) and (ClassMembers.status eq "ACTIVE") }
                 .firstOrNull()?.get(ClassMembers.classId)
                 ?: throw SecurityException("You must be enrolled in a class to request a device change.")
 
@@ -233,21 +202,24 @@ object AuthService {
             com.attendance.shared.dto.GenericResponse(message = "Device transfer request sent to $teacherName")
         }
     }
-        fun changePassword(userId: UUID, request: ChangePasswordRequest) {
+    fun changePassword(userId: UUID, request: ChangePasswordRequest) {
+        validateNewPassword(request.newPassword)
         transaction {
-            val user = Users.select { Users.id eq userId }.firstOrNull()
-                ?: throw IllegalArgumentException("User not found")
-            
-            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.newPassword.toCharArray())
+            // Serialize concurrent password changes so the old password cannot authorize a second update.
+            val user = Users.select { Users.id eq userId }.forUpdate().singleOrNull()
+                ?: throw SecurityException("Account unavailable")
+            verifyCurrentPassword(request.currentPassword, user[Users.passwordHash])
             Users.update({ Users.id eq userId }) {
-                it[passwordHash] = hashedPassword
+                it[passwordHash] = BCrypt.withDefaults().hashToString(12, request.newPassword.toCharArray())
+                it[authVersion] = user[Users.authVersion] + 1
+                it[updatedAt] = Instant.now()
             }
         }
     }
 
-
-
     fun initiateLogin(request: LoginRequest): AuthTokenResponse {
+        require(request.collegeId.length in 1..50 && request.password.toByteArray().size in 1..72) { "Invalid credentials" }
+        require(request.deviceFingerprint.isNotBlank() && request.deviceFingerprint.length <= 255) { "Invalid device ID" }
         return transaction {
             val users = Users.select { Users.collegeId eq request.collegeId }.toList()
             if (users.isEmpty()) throw IllegalArgumentException("Invalid credentials")
@@ -272,8 +244,8 @@ object AuthService {
                 throw SecurityException("PENDING_APPROVAL")
             }
 
-            if (user[Users.registrationStatus] == RegistrationStatus.SUSPENDED.name) {
-                throw SecurityException("Account suspended")
+            if (user[Users.accountStatus] != "ACTIVE" || user[Users.registrationStatus] != RegistrationStatus.ACTIVE.name) {
+                throw SecurityException("Account unavailable")
             }
 
             val currentDeviceId = user[Users.deviceId]
@@ -286,7 +258,7 @@ object AuthService {
             }
 
             val userId = user[Users.id]
-            val token = generateToken(userId, user[Users.role])
+            val token = generateToken(userId, user[Users.role], user[Users.authVersion])
 
             val faceEnrolled = !user[Users.faceEmbedding].isNullOrEmpty()
 
@@ -305,36 +277,25 @@ object AuthService {
         }
     }
 
+    /** Optional first-run provisioning only. Existing credentials are never overwritten on startup. */
     fun seedDefaultUsers() {
+        val adminId = System.getenv("BOOTSTRAP_ADMIN_ID") ?: return
+        val adminPassword = System.getenv("BOOTSTRAP_ADMIN_PASSWORD")
+            ?: error("BOOTSTRAP_ADMIN_PASSWORD is required when BOOTSTRAP_ADMIN_ID is configured")
+        val adminName = System.getenv("BOOTSTRAP_ADMIN_NAME") ?: "System Administrator"
+        validateRegistration(adminId, adminName, adminPassword)
         transaction {
-            val pw = BCrypt.withDefaults().hashToString(12, "Yogesh@Rtu8279".toCharArray())
-            if (Users.select { Users.collegeId eq "YogeshRtu" }.count() == 0L) {
-                Users.insert {
-                    it[collegeId] = "YogeshRtu"
-                    it[name] = "System Administrator"
-                    it[passwordHash] = pw
-                    it[role] = UserRole.ADMIN.name
-                    it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                    it[accountStatus] = "ACTIVE"
-                    it[createdAt] = Instant.now()
-                    it[updatedAt] = Instant.now()
-                }
+            if (Users.select { Users.collegeId eq adminId }.any()) return@transaction
+            Users.insert {
+                it[collegeId] = adminId
+                it[name] = adminName
+                it[passwordHash] = BCrypt.withDefaults().hashToString(12, adminPassword.toCharArray())
+                it[role] = UserRole.ADMIN.name
+                it[registrationStatus] = RegistrationStatus.ACTIVE.name
+                it[accountStatus] = "ACTIVE"
+                it[createdAt] = Instant.now()
+                it[updatedAt] = Instant.now()
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
