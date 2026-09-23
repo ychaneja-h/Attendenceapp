@@ -11,10 +11,11 @@ The live audit returned 19 public tables, zero tables without RLS and zero table
 ## Backend and Android changes
 
 - JWT signing requires an explicit secret of at least 32 characters. The known development secret is rejected. Configure `JWT_SECRET` in Render before deploying.
+- The staff-code check requires a configured `STAFF_MASTER_CODE` of at least 16 characters. If absent, that registration gate returns unavailable; existing account login is unaffected. Staff accounts still require approval.
 - Every authenticated request checks the account's current role, active status and token version. Password and approved device changes invalidate prior tokens.
 - Password changes verify the current password, serialize concurrent updates and sign the client out after success. Duplicate student registration cannot overwrite an account.
 - Class management, roster access and student approval actions check the owning teacher. Legacy client-supplied attendance sync is retired in favor of Plan A evidence reconciliation.
-- Face requests validate finite embeddings, and the client only activates server-approved face data. Cached class membership retains approval status.
+- Face requests validate finite embeddings, and the client only activates server-approved face data. Cached face data is bound to the signed-in account and cached class membership retains approval status.
 - Photo uploads have size/dimension limits, content validation and image re-encoding to a generated PNG filename. Unsupported formats are rejected.
 - Database error details are removed from public route responses. Hardcoded database-password and admin-seeding fallbacks are removed.
 - Signing credentials live in ignored local configuration. The previously tracked release keystore is removed from current Git tracking and Docker build context.

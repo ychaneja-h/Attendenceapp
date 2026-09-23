@@ -40,6 +40,10 @@ copies; review key exposure and supported distribution key rotation separately.
 
 ## Build and verify
 
+The 2026-09-23 release build passed 55 tests and release lint (zero errors,
+11 warnings). The APK is signed with the certificate below; version code 8 is
+higher than the previously deployed 1.3.1 code 7.
+
 Use JDK 17 or 21, the Android SDK, and a private `local.properties` containing
 `sdk.dir`. Machine-specific Java paths do not belong in tracked Gradle settings.
 On this Windows workstation, Android Studio's bundled JDK 21 can be selected for

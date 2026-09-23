@@ -45,7 +45,9 @@ fun Route.authRoutes() {
             try {
                 val request = call.receive<com.attendance.shared.dto.VerifyStaffCodeRequest>()
                 val passcode = request.passcode
-                val officialCode = System.getenv("STAFF_MASTER_CODE") ?: "Yogesh@Rtu@admin"
+                val officialCode = System.getenv("STAFF_MASTER_CODE")?.takeIf { it.length >= 16 }
+                    ?: return@post call.respond(HttpStatusCode.ServiceUnavailable,
+                        com.attendance.server.plugins.ErrorResponse("UNAVAILABLE", "Staff registration code is not configured. Contact the administrator."))
                 
                 if (passcode == officialCode) {
                     call.respond(HttpStatusCode.OK, com.attendance.shared.dto.GenericResponse(success = true))

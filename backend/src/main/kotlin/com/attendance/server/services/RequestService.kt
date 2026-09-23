@@ -27,7 +27,7 @@ class RequestService {
         return transaction {
             AccessControl.requireRole(studentId, setOf("STUDENT"))
             validateFace(requestedData)
-            val user = Users.select { Users.id eq studentId }.singleOrNull()
+            val user = Users.select { Users.id eq studentId }.forUpdate().singleOrNull()
             if (user != null && user[Users.faceEmbedding].isNullOrEmpty()) {
                 Users.update({ Users.id eq studentId }) {
                     it[faceEmbedding] = requestedData
@@ -100,7 +100,7 @@ class RequestService {
 
     fun approveRequest(requestId: UUID, actorId: UUID) {
         transaction {
-            val req = ApprovalRequests.select { ApprovalRequests.id eq requestId }.singleOrNull() ?: throw IllegalArgumentException("Request not found")
+            val req = ApprovalRequests.select { ApprovalRequests.id eq requestId }.forUpdate().singleOrNull() ?: throw IllegalArgumentException("Request not found")
             AccessControl.requireStudentTeacher(actorId, req[ApprovalRequests.studentId])
             require(req[ApprovalRequests.status] == "PENDING") { "Request is no longer pending" }
             
@@ -109,7 +109,7 @@ class RequestService {
             }
             
             if (req[ApprovalRequests.requestType] == "DEVICE_CHANGE") {
-                val student = Users.select { Users.id eq req[ApprovalRequests.studentId] }.single()
+                val student = Users.select { Users.id eq req[ApprovalRequests.studentId] }.forUpdate().single()
                 Users.update({ Users.id eq req[ApprovalRequests.studentId] }) {
                     it[deviceId] = req[ApprovalRequests.requestedData]
                     it[authVersion] = student[Users.authVersion] + 1

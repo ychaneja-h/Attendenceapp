@@ -18,7 +18,7 @@ Implemented in this checkout from the interrupted Plan A working copy. Plan B is
 - Teacher Present/Absent decisions override computed outcomes and can be changed again. The client gives newer synchronized decisions precedence over older already-uploaded local decisions.
 - Monthly attendance is inside each student class. Teacher history retains separate sessions, including multiple lectures on the same day. Each session has its own delete action; tombstones also suppress associated student attempts after late uploads.
 - Class and student CSV exports include the new sessions. Legacy local records are retained and explicitly labeled because their original session/check evidence cannot be reconstructed reliably.
-- Room migration 1 to 2 preserves existing records and supports one student in multiple class rosters. Refreshing a roster atomically replaces that class's cached roster.
+- Room migration 1 to 2 preserves existing records and supports one student in multiple class rosters. Migration 2 to 3 retains class membership approval status. Refreshing a roster atomically replaces that class's cached roster.
 
 ## Clock handling
 
@@ -26,19 +26,19 @@ Wall time, elapsed real time and an installation/boot identifier accompany event
 
 ## Validation
 
-Validated on 2026-09-23: debug assembly succeeded, all 41 unit tests passed (11 Android-side JVM tests and 30 backend tests), and Android lint completed with zero errors. Non-blocking lint warnings remain. `git diff --check` passed.
+Validated on 2026-09-23: signed release 1.4.0 (code 8) assembly and backend installation distribution succeeded. All 55 unit tests passed (11 Android-side JVM tests and 44 backend tests), including authentication and safe-photo-upload regressions. Release lint completed with zero errors and 11 warnings. `git diff --check` passed.
 
 From this directory, with a configured Android SDK and JDK:
 
 ```powershell
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :backend:test :app:lintDebug --console=plain --max-workers=2
+.\gradlew.bat :app:assembleRelease :app:testDebugUnitTest :backend:test :backend:installDist :app:lintRelease --console=plain --max-workers=2
 ```
 
-Tests cover face boundaries, the 75% threshold, missing scans, duplicate packets, late and out-of-order evidence, teacher overrides, tombstones, clock references and broadcast scheduling. The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Gradle reports are under each module's `build/reports` directory.
+Tests cover face boundaries, the 75% threshold, missing scans, duplicate packets, late and out-of-order evidence, teacher overrides, tombstones, clock references and broadcast scheduling. The signed APK is generated at `app/build/outputs/apk/release/app-release.apk`. Gradle reports are under each module's `build/reports` directory.
 
 ## Deployment and device validation still required
 
-The changes are local; no server deployment or phone installation was performed. Deploy the matching backend before using the new client synchronization endpoints. Database initialization adds the Plan A tables and conditionally widens earlier Plan A event IDs.
+Deploy the matching backend before using the new client synchronization endpoints. Configure the Render secrets documented in `SECURITY_RELEASE.md` first. Database initialization adds the Plan A tables, conditionally widens earlier Plan A event IDs and protects application tables from direct Supabase Data API access.
 
 No Android device was connected during implementation. Validate teacher/student entry, reception counts, stop and checkout offline on the actual Samsung and Redmi phones. Test locked screens, Bluetooth toggles, permission denial, recents removal, process death, reboot, and teacher/student synchronization in both orders. Repeat at classroom scale (approximately 200 students).
 

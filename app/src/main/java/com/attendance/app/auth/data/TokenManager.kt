@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 
 class TokenManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val facePrefs = context.getSharedPreferences("attendance_prefs", Context.MODE_PRIVATE)
 
     fun saveToken(token: String) {
         prefs.edit().putString(KEY_TOKEN, token).apply()
@@ -15,6 +16,10 @@ class TokenManager(context: Context) {
     }
 
     fun saveUserId(userId: String) {
+        if (facePrefs.getString("face_owner_id", null) != userId) {
+            facePrefs.edit().remove("registered_face_embedding").remove("pending_face_embedding")
+                .putBoolean("face_approval_pending", false).putString("face_owner_id", userId).apply()
+        }
         prefs.edit().putString(KEY_USER_ID, userId).apply()
     }
 

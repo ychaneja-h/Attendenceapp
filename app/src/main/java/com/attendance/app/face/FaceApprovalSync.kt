@@ -12,6 +12,8 @@ import org.json.JSONObject
 /** Cache only the server's active template; request history never activates local face data. */
 suspend fun syncApprovedFace(context: Context, httpClient: HttpClient): String {
     val prefs = context.getSharedPreferences("attendance_prefs", Context.MODE_PRIVATE)
+    val authPrefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    val ownerAtStart = authPrefs.getString("user_id", null) ?: return "Sign in to check face approval"
     val pendingAtStart = prefs.getString("pending_face_embedding", null)
     val requestsResponse = httpClient.get("${Constants.BASE_URL}/requests/me")
     check(requestsResponse.status.isSuccess()) { "Unable to check face approval." }
@@ -25,6 +27,7 @@ suspend fun syncApprovedFace(context: Context, httpClient: HttpClient): String {
         if (request.optString("status") == "REJECTED" && pendingAtStart != null &&
             sameFaceTemplate(request.optString("requestedData"), pendingAtStart)) pendingWasRejected = true
     }
+    if (authPrefs.getString("user_id", null) != ownerAtStart) return "Sign in to check face approval"
     if (serverPending) prefs.edit().putBoolean("face_approval_pending", true).apply()
 
     val faceResponse = httpClient.get("${Constants.BASE_URL}/users/me/face")
@@ -37,6 +40,7 @@ suspend fun syncApprovedFace(context: Context, httpClient: HttpClient): String {
         }
     }
     // A registration submitted during these network calls must retain its pending gate.
+    if (authPrefs.getString("user_id", null) != ownerAtStart) return "Sign in to check face approval"
     if (prefs.getString("pending_face_embedding", null) != pendingAtStart) return "Face Status: Pending Approval"
     val pendingApproved = pendingAtStart != null && sameFaceTemplate(approved, pendingAtStart)
     val localPendingUnresolved = pendingAtStart != null && !pendingApproved && !pendingWasRejected
