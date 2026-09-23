@@ -18,6 +18,7 @@ The live audit returned 19 public tables, zero tables without RLS and zero table
 - Face requests validate finite embeddings, and the client only activates server-approved face data. Cached face data is bound to the signed-in account and cached class membership retains approval status.
 - Photo uploads have size/dimension limits, content validation and image re-encoding to a generated PNG filename. Unsupported formats are rejected.
 - Database error details are removed from public route responses. Hardcoded database-password and admin-seeding fallbacks are removed.
+- PostgreSQL JDBC is updated to 42.7.11, including the SCRAM iteration-limit security fix (CVE-2026-42198). Use Supabase's session pooler on port 5432 for this long-running JDBC backend and retain `sslmode=require` or stronger certificate verification.
 - Signing credentials live in ignored local configuration. The previously tracked release keystore is removed from current Git tracking and Docker build context.
 
 ## Remaining operational limits
