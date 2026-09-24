@@ -34,6 +34,10 @@ object DatabaseConfig {
             addDataSourceProperty("preparedStatementCacheSizeMiB", "0")
             // transactionIsolation removed for Supabase pooler compatibility
             connectionTimeout = 30000
+            // A cold JVM can exceed the pooler's short TLS handshake deadline while
+            // loading crypto providers. Retry initialization within this bounded window
+            // instead of exiting after Hikari's default single cold connection attempt.
+            initializationFailTimeout = 60_000L
             idleTimeout = 600000
             maxLifetime = 1800000
         }
