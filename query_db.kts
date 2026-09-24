@@ -1,9 +1,11 @@
 import java.sql.DriverManager
 
-val url = "jdbc:postgresql://localhost:5432/attendance"
+fun requiredDbEnvironment(name: String): String = requireNotNull(System.getenv(name)?.takeIf { it.isNotBlank() }) { "$name must be configured" }
+
+val url = requiredDbEnvironment("DB_URL")
 val props = java.util.Properties()
-props.setProperty("user", "postgres")
-props.setProperty("password", "123456")
+props.setProperty("user", requiredDbEnvironment("DB_USER"))
+props.setProperty("password", requiredDbEnvironment("DB_PASSWORD"))
 val conn = DriverManager.getConnection(url, props)
 
 val stmt = conn.createStatement()

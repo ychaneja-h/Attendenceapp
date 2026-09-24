@@ -2,11 +2,15 @@
 
 The app uses its own authenticated Ktor API and a server-side PostgreSQL connection. Android does not use the Supabase public Data API to read attendance tables.
 
-## Supabase verification on 2026-09-23
+## Supabase verification on 2026-09-23 and 2026-09-24
 
 Project `zqufobolapqtodrgizyd` initially reported 23 critical advisor findings: 19 public tables without RLS and four potentially sensitive-column exposures. The repeatable migration in `backend/src/main/resources/db/harden-public.sql` enables RLS and revokes table and column grants from `PUBLIC`, `anon` and `authenticated`. The backend table owner retains access. No attendance or user records are deleted.
 
 The live audit returned 19 public tables, zero tables without RLS and zero tables exposed to client roles. A role-switching check verified that both client roles receive permission errors on every public table. The project has no public functions or policies, and no public views were present. Supabase Advisor then reported no security, performance or health issues. Default table grants were revoked so future tables created by the backend role start without client access. Startup applies the same protection to the new Plan A tables in the schema transaction.
+
+After the 1.4.0 backend started on 2026-09-24, the live audit confirmed 21 public tables, zero tables without RLS, zero tables with client table or column privileges, and both new Plan A tables protected. Render's `/health` returned HTTP 200 with `X-App-Version: 1.4.0`; unauthenticated requests to `/api/users/me` and `/api/classes/teacher` returned HTTP 401. Database pool initialization now retries for up to 60 seconds so a slow initial TLS handshake does not terminate a cold JVM immediately.
+
+Supabase SSL enforcement is enabled, rejecting unencrypted database connections. The Render connection uses the session pooler with TLS required.
 
 ## Backend and Android changes
 
@@ -18,6 +22,7 @@ The live audit returned 19 public tables, zero tables without RLS and zero table
 - Face requests validate finite embeddings, and the client only activates server-approved face data. Cached face data is bound to the signed-in account and cached class membership retains approval status.
 - Photo uploads have size/dimension limits, content validation and image re-encoding to a generated PNG filename. Unsupported formats are rejected.
 - Database error details are removed from public route responses. Hardcoded database-password and admin-seeding fallbacks are removed.
+- Legacy diagnostic scripts require database credentials from environment variables and no longer print password hashes.
 - PostgreSQL JDBC is updated to 42.7.11, including the SCRAM iteration-limit security fix (CVE-2026-42198). Use Supabase's session pooler on port 5432 for this long-running JDBC backend and retain `sslmode=require` or stronger certificate verification.
 - Signing credentials live in ignored local configuration. The previously tracked release keystore is removed from current Git tracking and Docker build context.
 
@@ -25,6 +30,6 @@ The live audit returned 19 public tables, zero tables without RLS and zero table
 
 Removing a key or password from the current source does not erase old Git history. The release signing key was previously committed; retain upgrade compatibility while assessing key rotation through the distribution channel. Do not publish the local keystore or signing configuration.
 
-Accounts originally created with published/default passwords still require password changes. Removing automatic default seeding does not change existing account passwords. Database credentials should also be rotated if they were ever disclosed.
+Accounts originally created with published/default passwords still require password changes. Removing automatic default seeding does not change existing account passwords. Rotate the historical Neon database credential if that database or role still exists, and any reused local development password; the diagnostic scripts previously committed those values. Database credentials should also be rotated if they were ever disclosed.
 
 These checks cover the identified database exposure and reviewed application paths. They are not a complete penetration test. Physical attendance, camera and BLE behavior still require device and classroom testing.
