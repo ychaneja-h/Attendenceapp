@@ -13,6 +13,7 @@ import com.attendance.app.auth.presentation.AuthViewModel
 import com.attendance.app.core.ui.components.AppTextField
 import com.attendance.app.core.ui.components.LoadingButton
 import com.attendance.app.core.ui.components.PasswordTextField
+import com.attendance.shared.dto.RegistrationValidation
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +27,7 @@ fun HodRegisterScreen(
     var department by remember { mutableStateOf("") }
     var departmentCode by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val passwordIssue = RegistrationValidation.password(password)
     var showPendingDialog by remember { mutableStateOf(false) }
 
     if (showPendingDialog) {
@@ -81,7 +83,8 @@ fun HodRegisterScreen(
             PasswordTextField(value = password, onValueChange = { 
                 password = it 
                 if (password == confirmPassword) passwordError = null
-            }, label = "Password")
+            }, label = "Password", isError = password.isNotEmpty() && passwordIssue != null, errorMessage = passwordIssue?.message)
+            Text(RegistrationValidation.PASSWORD_HINT, style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(16.dp))
 
             PasswordTextField(value = confirmPassword, onValueChange = { 
@@ -117,7 +120,7 @@ fun HodRegisterScreen(
                     )
                 },
                 isLoading = viewModel.isLoading,
-                enabled = name.isNotBlank() && collegeId.isNotBlank() && department.isNotBlank() && departmentCode.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() && !viewModel.isLoading
+                enabled = name.isNotBlank() && collegeId.isNotBlank() && department.isNotBlank() && departmentCode.isNotBlank() && passwordIssue == null && confirmPassword.isNotBlank() && !viewModel.isLoading
             )
         }
     }

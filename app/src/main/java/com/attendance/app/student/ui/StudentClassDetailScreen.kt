@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
@@ -24,6 +25,11 @@ import androidx.navigation.NavController
 import com.attendance.app.classes.presentation.ClassViewModel
 import com.attendance.app.core.network.ReportDownloader
 import com.attendance.app.core.ui.navigation.Screen
+import com.attendance.app.core.ui.components.AttendanceCounts
+import com.attendance.app.core.ui.components.AttendanceDetails
+import com.attendance.app.core.ui.components.AttendanceStatus
+import com.attendance.app.core.ui.components.AttendanceSyncNote
+import com.attendance.app.core.ui.components.attendanceLabel
 import com.attendance.app.student.presentation.AttendanceAction
 import com.attendance.app.student.presentation.StudentAttendanceViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -78,12 +84,12 @@ fun StudentClassDetailScreen(
     BackHandler(enabled = attempt != null) { showLeaveDialog = true }
     if (showLeaveDialog) AlertDialog(
         onDismissRequest = { showLeaveDialog = false },
-        title = { Text("Face checkout required") },
-        text = { Text("Scan your face within five minutes after your teacher stops the session. Closing the app does not complete checkout; a missing or late scan will be marked Under Review when records sync.") },
+        title = { Text("Still checked in") },
+        text = { Text("When class ends, scan your face to check out. You have five minutes after your teacher stops attendance.") },
         confirmButton = { TextButton(onClick = {
             showLeaveDialog = false
             attempt?.let { attendanceViewModel.initiateCheckOut(it.classId) }
-        }) { Text("Scan face to leave") } },
+        }) { Text("Check out") } },
         dismissButton = { TextButton(onClick = { showLeaveDialog = false }) { Text("Stay") } }
     )
     val downloader = remember { ReportDownloader(context) }
@@ -105,55 +111,55 @@ fun StudentClassDetailScreen(
                 classItem?.let { Text("Teacher: ${it.teacherName}", Modifier.padding(top = 12.dp)) }
             }
             item {
-                Card(Modifier.fillMaxWidth()) {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         when {
                             attempt?.classId == classId -> {
-                                Text("Present · provisional", style = MaterialTheme.typography.titleMedium)
-                                Text("Broadcasts sent: ${attempt.broadcastCount}")
-                                Text("Broadcasts are pending confirmation from your teacher's received checks. Entry face: Under Review until sync.")
-                                Text("Keep Bluetooth on. When your teacher announces the end, scan your face within five minutes.")
-                                Button(onClick = { attendanceViewModel.initiateCheckOut(classId) }, modifier = Modifier.fillMaxWidth()) { Text("Scan face to leave") }
+                                Text("You're checked in", style = MaterialTheme.typography.titleLarge)
+                                Text("Keep Bluetooth on until class ends.", style = MaterialTheme.typography.bodyMedium)
+                                Button(onClick = { attendanceViewModel.initiateCheckOut(classId) }, modifier = Modifier.fillMaxWidth()) { Text("Check out · scan face") }
                             }
                             attempt != null -> {
                                 Text("Attendance is active in another class.")
                                 Button(onClick = { navController.navigate(Screen.StudentClassDetail(attempt.classId)) }) { Text("Return to active class") }
                             }
                             else -> {
-                                Text("Entry face must be completed within five minutes after your teacher starts attendance.")
+                                Text("Ready for class?", style = MaterialTheme.typography.titleLarge)
+                                Text("Scan your face when your teacher starts attendance.")
                                 Button(onClick = {
                                     val permissions = mutableListOf<String>()
                                     if (Build.VERSION.SDK_INT >= 31) permissions.addAll(listOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT))
                                     if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
                                     if (permissions.isEmpty()) beginCheckIn() else permissionLauncher.launch(permissions.toTypedArray())
-                                }, modifier = Modifier.fillMaxWidth()) { Text("Mark attendance · scan face") }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("Check in · scan face") }
                             }
                         }
-                        if (scanStatus.isNotBlank() && scanStatus != "Ready") Text(scanStatus)
+                        if (scanStatus.isNotBlank() && scanStatus != "Ready" && !scanStatus.startsWith("Attendance System Active") && !scanStatus.startsWith("Face checkout saved")) Text(scanStatus)
                         state.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        state.syncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        AttendanceSyncNote(state.syncMessage)
                     }
                 }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = { month = month.minusMonths(1) }) { Text("Previous") }
-                    Text(month.toString(), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
+                    Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy")), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = { month = month.plusMonths(1) }, enabled = month < YearMonth.now()) { Text("Next") }
                 }
-                Text("Monthly attendance", style = MaterialTheme.typography.titleLarge)
-                Text("Present: ${monthResults.count { it.status == "PRESENT" }} · Absent: ${monthResults.count { it.status == "ABSENT" }} · Under Review: ${monthResults.count { it.status == "UNDER_REVIEW" }}")
-                Text("Provisional results may change after both phones sync. Only held class sessions count.", style = MaterialTheme.typography.bodySmall)
-                if (monthResults.isEmpty()) Text("No saved sessions for this month.", Modifier.padding(vertical = 12.dp))
+                AttendanceCounts(monthResults.count { it.status == "PRESENT" }, monthResults.count { it.status == "ABSENT" }, monthResults.count { it.status == "UNDER_REVIEW" })
+                if (monthResults.isEmpty()) Text("No classes recorded this month.", Modifier.padding(vertical = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(monthResults, key = { it.sessionId }) { result ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(Instant.ofEpochMilli(result.startedAtMs).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMM, h:mm a")))
-                        Text(result.status.replace('_', ' ') + if (result.provisional) " · provisional" else "", style = MaterialTheme.typography.titleMedium)
-                        Text("Checks: ${result.successfulChecks} out of ${result.totalChecks}")
-                        Text("Entry face: ${result.entryFaceStatus.replace('_', ' ')} · Exit face: ${result.exitFaceStatus.replace('_', ' ')}")
-                        result.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        AttendanceStatus(result.status, result.provisional)
+                        AttendanceDetails {
+                            Text("Checks: ${result.successfulChecks} of ${result.totalChecks}")
+                            Text("Check-in: ${attendanceLabel(result.entryFaceStatus)}")
+                            Text("Check-out: ${attendanceLabel(result.exitFaceStatus)}")
+                            result.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        }
                     }
                 }
             }

@@ -13,7 +13,7 @@ fun Application.configureRouting() {
 
     routing {
         get("/health") {
-            call.response.headers.append("X-App-Version", "1.4.0")
+            call.response.headers.append("X-App-Version", "1.4.1")
             call.respondText("OK")
         }
         authRoutes()

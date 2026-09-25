@@ -1,7 +1,7 @@
-# Android release 1.4.0
+# Android release 1.4.1
 
-This version uses application ID `com.attendance.app`, version name `1.4.0`, and
-version code `8`. It retains the existing release key so devices with a release
+This version uses application ID `com.attendance.app`, version name `1.4.1`, and
+version code `9`. It retains the existing release key so devices with a release
 signed by that key can upgrade without losing their local data. An installation
 signed with the Android debug key cannot be updated in place using the release
 APK; export any necessary data before removing a debug installation.
@@ -40,9 +40,19 @@ copies; review key exposure and supported distribution key rotation separately.
 
 ## Build and verify
 
-The 2026-09-23 release build passed 55 tests and release lint (zero errors,
-11 warnings). The APK is signed with the certificate above; version code 8 is
-higher than the previously deployed 1.3.1 code 7.
+The 1.4.1 release build passed 75 tests (58 backend, 17 Android), backend
+distribution packaging, and release lint (zero errors, 12 warnings). The APK
+signature and version were verified on 2026-09-25. It uses the same certificate
+above and version code 9, allowing an upgrade from 1.4.0 code 8.
+
+This patch simplifies the Home, Classes and History screens and adds adaptive,
+round, monochrome and Android 7 launcher icons. Detailed evidence remains under
+View details. Registration uses shared client/server validation with actionable
+messages. Duplicate authorization headers no longer cause History sync HTTP 500;
+identical legacy headers are accepted, while conflicting tokens are rejected.
+
+APK SHA-256:
+`c860579ef1df2e95c5296ade1e380b4cd26ad328f8c83d45e7ebee257404f5bf`
 
 Use JDK 17 or 21, the Android SDK, and a private `local.properties` containing
 `sdk.dir`. Machine-specific Java paths do not belong in tracked Gradle settings.

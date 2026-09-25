@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.attendance.app.classes.presentation.ClassViewModel
 import com.attendance.app.core.ui.components.EmptyStateView
+import com.attendance.app.core.ui.components.ClassArtwork
 import com.attendance.app.core.ui.navigation.Screen
 import com.attendance.app.profile.presentation.ProfileUiState
 import com.attendance.app.profile.presentation.ProfileViewModel
@@ -71,7 +73,7 @@ fun StudentHomeScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Dashboard") }) },
+        topBar = { TopAppBar(title = { Text("Home") }) },
         bottomBar = { StudentBottomBar(navController, 0) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showJoinDialog = true }) {
@@ -129,34 +131,34 @@ fun StudentHomeScreen(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text(profile.email, style = MaterialTheme.typography.bodyMedium)
+                                Text("Ready for your next class?", style = MaterialTheme.typography.bodyMedium)
                                 }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                 }
             }
 
             attendanceState.activeStudentAttempt?.let { attempt ->
-                Card(Modifier.fillMaxWidth()) {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Attendance is still active", style = MaterialTheme.typography.titleMedium)
-                        Text("When your teacher stops the session, scan your face within five minutes to leave.")
+                        Text("You're checked in", style = MaterialTheme.typography.titleMedium)
+                        Text("Keep Bluetooth on until class ends.")
                         Button(onClick = { navController.navigate(Screen.StudentClassDetail(attempt.classId)) }) {
-                            Text("Return to active attendance")
+                            Text("Open attendance")
                         }
                     }
                 }
             }
             attendanceState.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Enrolled Classes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
+            Text("Your classes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.Start))
             Spacer(modifier = Modifier.height(8.dp))
 
             if (classes.isEmpty()) {
-                EmptyStateView("You are not enrolled in any classes.", "Tap + to join a class")
+                EmptyStateView("No classes yet", "Tap + to join your first class")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                         items(classes, key = { it.id }) { cls ->
@@ -165,7 +167,8 @@ fun StudentHomeScreen(
                             onClick = { 
                                 if (!isPending) navController.navigate(Screen.StudentClassDetail(cls.id)) 
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Row(
@@ -173,7 +176,12 @@ fun StudentHomeScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(cls.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                    ClassArtwork()
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(cls.name, style = MaterialTheme.typography.titleMedium)
+                                        Text(cls.teacherName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                     if (isPending) {
                                         Surface(
                                             color = MaterialTheme.colorScheme.surfaceVariant, 
@@ -184,9 +192,6 @@ fun StudentHomeScreen(
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Code: ${cls.id.take(5)} - Section: ${cls.section}", style = MaterialTheme.typography.bodyMedium)
-                                Text("Teacher: ${cls.teacherName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

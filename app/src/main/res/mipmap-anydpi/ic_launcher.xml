@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Native vector fallback for Android 7, before adaptive launcher icons. -->
+    <path android:fillColor="#1565C0"
+        android:pathData="M28,4H80C93.25,4 104,14.75 104,28V80C104,93.25 93.25,104 80,104H28C14.75,104 4,93.25 4,80V28C4,14.75 14.75,4 28,4Z" />
+    <group android:scaleX="1.24" android:scaleY="1.24" android:translateX="-12.96" android:translateY="-12.96">
+    <path android:fillColor="#003258" android:fillAlpha="0.18"
+        android:pathData="M41,31H69C73.42,31 77,34.58 77,39V73C77,77.42 73.42,81 69,81H41C36.58,81 33,77.42 33,73V39C33,34.58 36.58,31 41,31Z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M41,29H67C71.42,29 75,32.58 75,37V71C75,75.42 71.42,79 67,79H41C36.58,79 33,75.42 33,71V37C33,32.58 36.58,29 41,29Z" />
+    <path android:fillColor="#D1E4FF"
+        android:pathData="M48,34H60C60.83,34 61.5,34.67 61.5,35.5C61.5,36.33 60.83,37 60,37H48C47.17,37 46.5,36.33 46.5,35.5C46.5,34.67 47.17,34 48,34Z" />
+    <path android:fillColor="#1565C0"
+        android:pathData="M53,40A6.5,6.5 0,1 1,53,53A6.5,6.5 0,1 1,53,40ZM42,63C42,58.6 46.9,56 53,56C59.1,56 64,58.6 64,63V66H42Z" />
+    <path android:fillColor="#1565C0"
+        android:pathData="M67,53A14,14 0,1 1,67,81A14,14 0,1 1,67,53Z" />
+    <path android:fillColor="#2E7D32"
+        android:pathData="M67,55.5A11.5,11.5 0,1 1,67,78.5A11.5,11.5 0,1 1,67,55.5Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M61,67L65.2,71.2L73,63" />
+    </group>
+</vector>

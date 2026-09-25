@@ -1,5 +1,19 @@
 # Security changes for 1.4.0
 
+## 1.4.1 compatibility and validation fixes
+
+The Android client now adds its default Authorization header only when a request
+has none. The backend accepts duplicate copies of the exact same bearer token
+from older clients, including proxy-combined headers, and rejects conflicting or
+malformed credentials. JWT signature, account status, role and token-version
+validation remain in place. Isolated HTTP/database regression tests reproduce
+the previous History HTTP 500 and verify successful synchronization after the fix.
+
+Registration returns authored validation messages and HTTP 409 for existing
+College IDs. Internal failures remain sanitized HTTP 500 responses. Shared
+client/server field checks preserve password bytes, account/device ownership and
+staff approval requirements. No Supabase grants or RLS policies were broadened.
+
 The app uses its own authenticated Ktor API and a server-side PostgreSQL connection. Android does not use the Supabase public Data API to read attendance tables.
 
 ## Supabase verification on 2026-09-23 and 2026-09-24

@@ -15,8 +15,8 @@ fun StudentAttendanceScreen(navController: NavController) {
         bottomBar = { StudentBottomBar(navController, 2) }
     ) { padding ->
         EmptyStateView(
-            title = "No attendance history",
-            subtitle = "Your attendance records will appear here",
+            title = "Attendance lives with your classes",
+            subtitle = "Open a class from Home to see your attendance.",
             modifier = Modifier.padding(padding)
         )
     }

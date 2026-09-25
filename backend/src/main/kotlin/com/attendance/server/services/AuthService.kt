@@ -1,4 +1,4 @@
-﻿package com.attendance.server.services
+package com.attendance.server.services
 
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.attendance.server.config.AuthConfig
@@ -27,9 +27,7 @@ object AuthService {
         .sign(Algorithm.HMAC256(AuthConfig.secret))
 
     internal fun validateNewPassword(password: String) {
-        require(password.length >= 8 && password.toByteArray(Charsets.UTF_8).size <= 72) {
-            "Password must contain at least 8 characters and at most 72 UTF-8 bytes"
-        }
+        RegistrationValidation.password(password)?.let { throw AuthRequestException(it.code, it.message) }
     }
 
     internal fun verifyCurrentPassword(password: String, passwordHash: String) {
@@ -40,31 +38,30 @@ object AuthService {
     }
 
     private fun validateRegistration(collegeId: String, name: String, password: String) {
-        require(collegeId.isNotBlank() && collegeId.length <= 50) { "Invalid college ID" }
-        require(name.isNotBlank() && name.length <= 200) { "Invalid name" }
-        validateNewPassword(password)
+        RegistrationValidation.common(collegeId, name, password)?.let { throw AuthRequestException(it.code, it.message) }
     }
 
     fun registerStudent(request: StudentRegisterRequest): AuthTokenResponse {
-        validateRegistration(request.collegeId, request.name, request.password)
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.student(registration)?.let { throw AuthRequestException(it.code, it.message) }
         return transaction {
-            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            require(existingUser == null) { "Account with this College ID already exists" }
+            val existingUser = Users.select { Users.collegeId eq registration.collegeId }.firstOrNull()
+            if (existingUser != null) throw AuthRequestException("ACCOUNT_EXISTS", "An account with this College ID already exists. Sign in instead.", 409)
 
-            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
+            val hashedPassword = BCrypt.withDefaults().hashToString(12, registration.password.toCharArray())
 
             val userId = Users.insert {
-                it[collegeId] = request.collegeId
-                it[name] = request.name
+                it[collegeId] = registration.collegeId
+                it[name] = registration.name
                 it[passwordHash] = hashedPassword
-                it[deviceId] = request.deviceFingerprint
+                it[deviceId] = registration.deviceFingerprint
                 it[role] = UserRole.STUDENT.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
                 it[accountStatus] = "ACTIVE"
-                it[department] = request.department
-                it[section] = request.section
-                it[semester] = request.semester
-                it[academicYear] = request.academicYear
+                it[department] = registration.department
+                it[section] = registration.section
+                it[semester] = registration.semester
+                it[academicYear] = registration.academicYear
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
             }[Users.id]
@@ -75,32 +72,33 @@ object AuthService {
                 refreshToken = token,
                 role = UserRole.STUDENT.name,
                 userId = userId.toString(),
-                name = request.name,
+                name = registration.name,
                 requiresFaceEnrollment = true
             )
         }
     }
 
     fun registerHod(request: HodRegisterRequest): AuthTokenResponse {
-        validateRegistration(request.collegeId, request.name, request.password)
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.hod(registration)?.let { throw AuthRequestException(it.code, it.message) }
         return transaction {
-            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            require(existingUser == null) { "Account with this College ID already exists" }
+            val existingUser = Users.select { Users.collegeId eq registration.collegeId }.firstOrNull()
+            if (existingUser != null) throw AuthRequestException("ACCOUNT_EXISTS", "An account with this College ID already exists. Sign in instead.", 409)
 
-            if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
-                throw IllegalArgumentException("Department Code already in use by another HOD")
+            if (Users.select { (Users.departmentCode eq registration.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() > 0L) {
+                throw AuthRequestException("DEPARTMENT_CODE_IN_USE", "This department invite code is already in use. Choose another code.", 409)
             }
 
-            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
+            val hashedPassword = BCrypt.withDefaults().hashToString(12, registration.password.toCharArray())
 
             val userId = Users.insert {
-                it[collegeId] = request.collegeId
-                it[name] = request.name
+                it[collegeId] = registration.collegeId
+                it[name] = registration.name
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.HOD.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                it[department] = request.department
-                it[departmentCode] = request.departmentCode
+                it[department] = registration.department
+                it[departmentCode] = registration.departmentCode
                 it[accountStatus] = "PENDING"
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
@@ -111,31 +109,32 @@ object AuthService {
                 refreshToken = "",
                 role = UserRole.HOD.name,
                 userId = userId.toString(),
-                name = request.name,
+                name = registration.name,
                 requiresFaceEnrollment = false
             )
         }
     }
 
     fun registerTeacher(request: TeacherRegisterRequest): AuthTokenResponse {
-        validateRegistration(request.collegeId, request.name, request.password)
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.teacher(registration)?.let { throw AuthRequestException(it.code, it.message) }
         return transaction {
-            val existingUser = Users.select { Users.collegeId eq request.collegeId }.firstOrNull()
-            require(existingUser == null) { "Account with this College ID already exists" }
+            val existingUser = Users.select { Users.collegeId eq registration.collegeId }.firstOrNull()
+            if (existingUser != null) throw AuthRequestException("ACCOUNT_EXISTS", "An account with this College ID already exists. Sign in instead.", 409)
 
-            if (Users.select { (Users.departmentCode eq request.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
-                throw IllegalArgumentException("Invalid Department Code")
+            if (Users.select { (Users.departmentCode eq registration.departmentCode) and (Users.role eq UserRole.HOD.name) }.count() == 0L) {
+                throw AuthRequestException("INVALID_DEPARTMENT_CODE", "Department invite code was not found. Ask your HOD for the correct code.")
             }
 
-            val hashedPassword = BCrypt.withDefaults().hashToString(12, request.password.toCharArray())
+            val hashedPassword = BCrypt.withDefaults().hashToString(12, registration.password.toCharArray())
 
             val userId = Users.insert {
-                it[collegeId] = request.collegeId
-                it[name] = request.name
+                it[collegeId] = registration.collegeId
+                it[name] = registration.name
                 it[passwordHash] = hashedPassword
                 it[role] = UserRole.TEACHER.name
                 it[registrationStatus] = RegistrationStatus.ACTIVE.name
-                it[departmentCode] = request.departmentCode
+                it[departmentCode] = registration.departmentCode
                 it[accountStatus] = "PENDING"
                 it[createdAt] = Instant.now()
                 it[updatedAt] = Instant.now()
@@ -146,7 +145,7 @@ object AuthService {
                 refreshToken = "",
                 role = UserRole.TEACHER.name,
                 userId = userId.toString(),
-                name = request.name,
+                name = registration.name,
                 requiresFaceEnrollment = false
             )
         }

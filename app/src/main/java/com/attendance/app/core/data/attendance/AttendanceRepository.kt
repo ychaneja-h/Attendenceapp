@@ -310,7 +310,11 @@ class AttendanceRepository(
                     setBody(PlanASyncRequest(pending.map { json.decodeFromString<PlanAEvent>(it.payload) }))
                 }
                 if (!response.status.isSuccess()) {
-                    syncMessage.value = "Saved on this phone. Server sync unavailable (${response.status.value})."
+                    syncMessage.value = when (response.status) {
+                        HttpStatusCode.Unauthorized -> "Sign in again to update attendance. Your saved records are safe."
+                        HttpStatusCode.Forbidden -> "This account cannot update attendance. Contact your teacher."
+                        else -> "Saved on this phone. We’ll try syncing again shortly."
+                    }
                     return@withLock false
                 }
                 val result: PlanASyncResponse = response.body()

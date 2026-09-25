@@ -3,6 +3,7 @@ package com.attendance.app.teacher.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -16,6 +17,7 @@ import androidx.navigation.NavController
 import com.attendance.app.core.ui.components.EmptyStateView
 import com.attendance.app.core.ui.navigation.Screen
 import com.attendance.app.classes.presentation.ClassViewModel
+import com.attendance.app.core.ui.components.ClassArtwork
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,18 +53,19 @@ fun TeacherClassesScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(classes) { classItem ->
+                items(classes, key = { it.id }) { classItem ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
                         onClick = { navController.navigate(Screen.TeacherClassDetail(classItem.id)) }
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = classItem.name, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "Section: ${classItem.section} | Sem: ${classItem.semester}", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Class Code: ${classItem.classCode}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                            Text(text = "${classItem.studentCount} Students", style = MaterialTheme.typography.labelMedium)
+                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ClassArtwork()
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(classItem.name, style = MaterialTheme.typography.titleMedium)
+                                Text("${classItem.studentCount} students · ${classItem.section}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Code ${classItem.classCode}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                 }

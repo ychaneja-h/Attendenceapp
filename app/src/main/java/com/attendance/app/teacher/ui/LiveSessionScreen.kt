@@ -3,6 +3,7 @@ package com.attendance.app.teacher.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -15,6 +16,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.attendance.app.teacher.presentation.LiveSessionViewModel
 import com.attendance.app.teacher.presentation.TeacherAttendanceViewModel
+import com.attendance.app.core.ui.components.AttendanceCounts
+import com.attendance.app.core.ui.components.AttendanceDetails
+import com.attendance.app.core.ui.components.AttendanceStatus
+import com.attendance.app.core.ui.components.AttendanceSyncNote
+import com.attendance.app.core.ui.components.attendanceLabel
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -55,14 +61,13 @@ fun LiveSessionScreen(
     if (confirmStop) AlertDialog(
         onDismissRequest = { confirmStop = false },
         title = { Text("Stop attendance?") },
-        text = { Text("Tell students to scan their faces to leave. Their five-minute exit window starts when you stop this session.") },
+        text = { Text("Ask students to check out within five minutes.") },
         confirmButton = { TextButton(onClick = { confirmStop = false; attendanceViewModel.stopAttendanceSession(context) }) { Text("Stop session") } },
         dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Continue session") } }
     )
     correction?.let { (studentId, status) ->
         AlertDialog(onDismissRequest = { correction = null }, title = { Text("Mark ${status.lowercase()}") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Your decision is saved offline and takes priority when records sync. You can change it again later.")
                 OutlinedTextField(correctionReason, { correctionReason = it }, label = { Text("Reason (optional)") })
             }
         }, confirmButton = { TextButton(onClick = {
@@ -82,32 +87,36 @@ fun LiveSessionScreen(
             item {
                 if (session == null) Text("Session is unavailable or has been deleted.")
                 else {
-                    Text(session.className, style = MaterialTheme.typography.headlineSmall)
-                    Text(Instant.ofEpochMilli(session.startedAtMs).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")))
-                    Text("Checks received on this phone · five-minute rounds")
-                    Text("Present: ${session.students.count { it.status == "PRESENT" }} · Absent: ${session.students.count { it.status == "ABSENT" }} · Under Review: ${session.students.count { it.status == "UNDER_REVIEW" }}")
-                    if (session.stoppedAtMs != null) Text("Session stopped. Students must complete face checkout within five minutes.")
-                    if (session.syncPending) Text("Provisional results. Face timing and the 75% rule are reconciled after both phones sync.", style = MaterialTheme.typography.bodySmall)
-                    if (session.legacy) Text("Saved from the previous app version; detailed check evidence may be unavailable.", style = MaterialTheme.typography.bodySmall)
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(session.className, style = MaterialTheme.typography.headlineSmall)
+                        Text(Instant.ofEpochMilli(session.startedAtMs).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMM yyyy · h:mm a")), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        AttendanceCounts(session.students.count { it.status == "PRESENT" }, session.students.count { it.status == "ABSENT" }, session.students.count { it.status == "UNDER_REVIEW" })
+                        if (session.stoppedAtMs != null) Text("Session ended", style = MaterialTheme.typography.labelLarge)
+                        if (session.syncPending) Text("Attendance updating", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (session.legacy) Text("Older record", style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 state.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 attendanceViewModel.sessionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 actionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                state.syncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                AttendanceSyncNote(state.syncMessage)
             }
             for (status in listOf("PRESENT", "UNDER_REVIEW", "ABSENT")) {
                 val students = session?.students?.filter { it.status == status }.orEmpty()
-                if (students.isNotEmpty()) item { Text("${status.replace('_', ' ')} (${students.size})", style = MaterialTheme.typography.titleMedium) }
+                if (students.isNotEmpty()) item { Text("${attendanceLabel(status)} · ${students.size}", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleMedium) }
                 items(students, key = { it.studentId }) { student ->
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(student.name, style = MaterialTheme.typography.titleMedium)
-                            Text(student.status.replace('_', ' ') + if (student.provisional) " · provisional" else "")
-                            Text("Checks: ${student.successfulChecks} out of ${student.totalChecks}")
-                            student.lastReceivedAtMs?.let { time -> Text("Last received: " + Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("h:mm:ss a"))) }
-                            Text("Entry face: ${student.entryFaceStatus.replace('_', ' ')} · Exit face: ${student.exitFaceStatus.replace('_', ' ')}", style = MaterialTheme.typography.bodySmall)
-                            student.manualStatus?.let { Text("Teacher decision: ${it.replace('_', ' ')}") }
-                            student.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                            AttendanceStatus(student.status, student.provisional)
+                            AttendanceDetails {
+                                Text("Checks: ${student.successfulChecks} of ${student.totalChecks}")
+                                student.lastReceivedAtMs?.let { time -> Text("Last check: " + Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("h:mm:ss a"))) }
+                                Text("Check-in: ${attendanceLabel(student.entryFaceStatus)}")
+                                Text("Check-out: ${attendanceLabel(student.exitFaceStatus)}")
+                                student.manualStatus?.let { Text("Your decision: ${attendanceLabel(it)}") }
+                                student.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                            }
                             if (session?.legacy != true) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { correctionReason = ""; correction = student.studentId to "PRESENT" }) { Text("Mark present") }
                                 TextButton(onClick = { correctionReason = ""; correction = student.studentId to "ABSENT" }) { Text("Mark absent") }

@@ -46,4 +46,5 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.ktor.server.test)
+    testRuntimeOnly("com.h2database:h2:2.5.250")
 }

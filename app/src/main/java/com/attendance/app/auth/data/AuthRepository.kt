@@ -1,4 +1,4 @@
-﻿package com.attendance.app.auth.data
+package com.attendance.app.auth.data
 
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
@@ -6,6 +6,9 @@ import io.ktor.http.HttpHeaders
 import com.attendance.shared.dto.AuthTokenResponse
 import com.attendance.shared.dto.LoginRequest
 import com.attendance.shared.dto.StudentRegisterRequest
+import com.attendance.shared.dto.RegistrationValidation
+import com.attendance.shared.dto.normalizedForRegistration
+import kotlinx.coroutines.CancellationException
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -37,16 +40,20 @@ class AuthRepository(
             } else {
                 Result.failure(Exception("Invalid passcode"))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
     suspend fun registerStudent(request: StudentRegisterRequest): Result<AuthTokenResponse> {
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.student(registration)?.let { return Result.failure(IllegalArgumentException(it.message)) }
         return try {
             val response = httpClient.post("$baseUrl/student/register") {
                 contentType(ContentType.Application.Json)
-                setBody(request)
+                setBody(registration)
             }
             if (response.status.isSuccess()) {
                 val body: AuthTokenResponse = response.body()
@@ -55,50 +62,54 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                Result.failure(Exception(authErrorMessage(response.bodyAsText(), response.status.value, "Check your registration details and try again.")))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
     suspend fun registerTeacher(request: com.attendance.shared.dto.TeacherRegisterRequest): Result<AuthTokenResponse> {
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.teacher(registration)?.let { return Result.failure(IllegalArgumentException(it.message)) }
         return try {
             val response = httpClient.post("$baseUrl/teacher/register") {
                 contentType(ContentType.Application.Json)
-                setBody(request)
+                setBody(registration)
             }
             if (response.status.isSuccess()) {
                 val body: AuthTokenResponse = response.body()
-                tokenManager.saveToken(body.accessToken)
-                tokenManager.saveUserId(body.userId)
-                tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                Result.failure(Exception(authErrorMessage(response.bodyAsText(), response.status.value, "Check your registration details and try again.")))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
     suspend fun registerHod(request: com.attendance.shared.dto.HodRegisterRequest): Result<AuthTokenResponse> {
+        val registration = request.normalizedForRegistration()
+        RegistrationValidation.hod(registration)?.let { return Result.failure(IllegalArgumentException(it.message)) }
         return try {
             val response = httpClient.post("$baseUrl/hod/register") {
                 contentType(ContentType.Application.Json)
-                setBody(request)
+                setBody(registration)
             }
             if (response.status.isSuccess()) {
                 val body: AuthTokenResponse = response.body()
-                tokenManager.saveToken(body.accessToken)
-                tokenManager.saveUserId(body.userId)
-                tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Registration failed"))
+                Result.failure(Exception(authErrorMessage(response.bodyAsText(), response.status.value, "Check your registration details and try again.")))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
@@ -115,10 +126,12 @@ class AuthRepository(
                 tokenManager.saveRole(body.role)
                 Result.success(body)
             } else {
-                val errorBody = response.bodyAsText(); val obj = org.json.JSONObject(errorBody.takeIf { it.startsWith("{") } ?: "{}"); var errMsg = obj.optString("error"); if (errMsg == "ERROR" || errMsg.isNullOrBlank()) { errMsg = obj.optString("message", errorBody) }; Result.failure(Exception(errMsg.takeIf { it.isNotBlank() } ?: "Login failed"))
+                Result.failure(Exception(authErrorMessage(response.bodyAsText(), response.status.value, "Unable to sign in. Check your College ID and password.")))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
@@ -139,8 +152,10 @@ class AuthRepository(
                 val msg = obj.optString("message", obj.optString("error", "Failed to change password"))
                 Result.failure(Exception(msg))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 
@@ -166,8 +181,10 @@ class AuthRepository(
                 val obj = org.json.JSONObject(response.bodyAsText())
                 Result.failure(Exception(obj.optString("error", "Failed to request transfer")))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(authRequestFailure(e))
         }
     }
 }

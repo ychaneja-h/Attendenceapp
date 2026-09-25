@@ -3,6 +3,7 @@ package com.attendance.app.student.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.attendance.app.core.ui.components.EmptyStateView
+import com.attendance.app.core.ui.components.ClassArtwork
 import com.attendance.app.core.ui.navigation.Screen
 import com.attendance.app.classes.presentation.ClassViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -60,29 +62,24 @@ fun StudentClassesScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(classes) { classItem ->
+                items(classes, key = { it.id }) { classItem ->
+                    val isPending = classItem.memberStatus != "ACTIVE"
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
                         onClick = { 
-                            if (classItem.memberStatus != "PENDING_APPROVAL") {
+                            if (!isPending) {
                                 navController.navigate(Screen.StudentClassDetail(classItem.id)) 
                             }
                         }
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = classItem.name, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "Teacher: ${classItem.teacherName}", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "Section: ${classItem.section} | Sem: ${classItem.semester}", style = MaterialTheme.typography.labelMedium)
-                            
-                            if (classItem.memberStatus == "PENDING_APPROVAL") {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Pending Approval",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
+                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ClassArtwork()
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(classItem.name, style = MaterialTheme.typography.titleMedium)
+                                Text(classItem.teacherName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${classItem.section} · Semester ${classItem.semester}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (isPending) Text("Awaiting approval", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }

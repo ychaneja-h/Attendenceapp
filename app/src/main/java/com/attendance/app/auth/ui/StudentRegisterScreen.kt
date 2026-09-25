@@ -15,6 +15,7 @@ import com.attendance.app.core.ui.components.AppTextField
 import com.attendance.app.core.ui.components.LoadingButton
 import com.attendance.app.core.ui.components.PasswordTextField
 import com.attendance.app.auth.presentation.AuthViewModel
+import com.attendance.shared.dto.RegistrationValidation
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +33,8 @@ fun StudentRegisterScreen(
     var department by remember { mutableStateOf("") }
     var section by remember { mutableStateOf("") }
     var semester by remember { mutableStateOf("") }
+    var academicYear by remember { mutableStateOf(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).let { "$it-${it + 1}" }) }
+    val passwordIssue = RegistrationValidation.password(password)
 
     Scaffold(
         topBar = {
@@ -56,7 +59,7 @@ fun StudentRegisterScreen(
             Text(text = "Create Account", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Register with your college details. Your account will need teacher approval.",
+                text = "Register with your college details. Your teacher approves your class join request.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -72,7 +75,11 @@ fun StudentRegisterScreen(
             Spacer(modifier = Modifier.height(12.dp))
             AppTextField(value = semester, onValueChange = { semester = it }, label = "Semester", keyboardType = KeyboardType.Number)
             Spacer(modifier = Modifier.height(12.dp))
-            PasswordTextField(value = password, onValueChange = { password = it }, label = "Password", imeAction = ImeAction.Next)
+            AppTextField(value = academicYear, onValueChange = { academicYear = it }, label = "Academic year")
+            Spacer(modifier = Modifier.height(12.dp))
+            PasswordTextField(value = password, onValueChange = { password = it }, label = "Password", imeAction = ImeAction.Next,
+                isError = password.isNotEmpty() && passwordIssue != null, errorMessage = passwordIssue?.message)
+            Text(RegistrationValidation.PASSWORD_HINT, style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(12.dp))
             PasswordTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = "Confirm Password")
             Spacer(modifier = Modifier.height(16.dp))
@@ -85,10 +92,7 @@ fun StudentRegisterScreen(
             LoadingButton(
                 text = "Register",
                 onClick = {
-                    val parts = name.trim().split(" ")
-                    val fName = parts.firstOrNull() ?: ""
-                    val lName = if (parts.size > 1) parts.drop(1).joinToString(" ") else ""
-                    val sem = semester.toIntOrNull() ?: 1
+                    val sem = semester.toIntOrNull() ?: 0
                     
                     viewModel.register(context = context,
                         name = name.trim(),
@@ -96,13 +100,14 @@ fun StudentRegisterScreen(
                         department = department,
                         section = section,
                         semester = sem,
-                        academicYear = "2024-2025",
+                        academicYear = academicYear,
                         password = password,
                         onSuccess = onSuccess
                     )
                 },
                 isLoading = viewModel.isLoading,
-                enabled = collegeId.isNotBlank() && name.isNotBlank() && password.isNotBlank() && password == confirmPassword && !viewModel.isLoading
+                enabled = collegeId.isNotBlank() && name.isNotBlank() && department.isNotBlank() && section.isNotBlank() &&
+                    academicYear.isNotBlank() && (semester.toIntOrNull() ?: 0) > 0 && passwordIssue == null && password == confirmPassword && !viewModel.isLoading
             )
             Spacer(modifier = Modifier.height(24.dp))
         }

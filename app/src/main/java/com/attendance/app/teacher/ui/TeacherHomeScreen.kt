@@ -116,7 +116,7 @@ fun TeacherHomeScreen(
     if (showBackgroundPermissionDialog) AlertDialog(
         onDismissRequest = { showBackgroundPermissionDialog = false },
         title = { Text("Receive checks while your phone is locked") },
-        text = { Text("Android 10 and 11 need location permission set to Allow all the time so attendance checks keep arriving when this app is in the background. Open Permissions, then Location, and select Allow all the time.") },
+        text = { Text("To keep attendance active, open Permissions → Location and select Allow all the time.") },
         confirmButton = { TextButton(onClick = {
             showBackgroundPermissionDialog = false
             if (Build.VERSION.SDK_INT == 29) backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
@@ -128,7 +128,7 @@ fun TeacherHomeScreen(
     if (confirmStop) AlertDialog(
         onDismissRequest = { confirmStop = false },
         title = { Text("Stop attendance?") },
-        text = { Text("Tell students to scan their faces to leave. Their five-minute exit window starts when you stop this session.") },
+        text = { Text("Ask students to check out within five minutes.") },
         confirmButton = { TextButton(onClick = { confirmStop = false; attendanceViewModel.stopAttendanceSession(context) }) { Text("Stop session") } },
         dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Continue session") } }
     )
@@ -147,7 +147,7 @@ fun TeacherHomeScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Home - Live Attendance") }) },
+        topBar = { TopAppBar(title = { Text("Home") }) },
         bottomBar = { TeacherBottomBar(navController, 0) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
@@ -189,7 +189,7 @@ fun TeacherHomeScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(profile.email, style = MaterialTheme.typography.bodyMedium)
+                            Text("Let's get class started", style = MaterialTheme.typography.bodyMedium)
                             }
                     }
                 }
@@ -197,7 +197,6 @@ fun TeacherHomeScreen(
             }
 
             Text("Your Classes", style = MaterialTheme.typography.titleLarge)
-            Text("Checks every five minutes. Final attendance requires at least 75% and valid entry / exit face scans.", style = MaterialTheme.typography.bodySmall)
             attendanceViewModel.sessionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             attendanceState.serviceMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (attendanceViewModel.isStartingSession) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -211,8 +210,7 @@ fun TeacherHomeScreen(
                         val isActive = activeClassId == cls.id
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                             )
@@ -226,7 +224,7 @@ fun TeacherHomeScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(text = cls.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = "Code: ${cls.classCode}", style = MaterialTheme.typography.bodyMedium)
+                                        Text(text = if (isActive) "Live now" else "${cls.studentCount} students", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     if (isActive) {
                                         Button(
@@ -271,7 +269,7 @@ fun TeacherHomeScreen(
                                         onClick = { navController.navigate(Screen.LiveSession(cls.id, sessionId = attendanceState.activeTeacherSession?.sessionId)) },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text("View Active Session")
+                                        Text("Open attendance")
                                     }
                                 }
                             }

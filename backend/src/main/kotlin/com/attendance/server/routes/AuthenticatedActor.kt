@@ -10,6 +10,7 @@ internal fun ApplicationCall.actorId(): UUID =
         ?: throw SecurityException("Authentication required")
 
 internal fun publicError(error: Throwable): String = when (error) {
+    is com.attendance.server.services.AuthRequestException -> error.message ?: "Check your account details."
     is SecurityException -> error.message ?: "Access denied"
     is IllegalArgumentException -> "Invalid request"
     else -> "The request could not be completed"

@@ -3,6 +3,7 @@ package com.attendance.app.teacher.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.attendance.app.core.network.ReportDownloader
 import com.attendance.app.classes.presentation.ClassViewModel
+import com.attendance.app.core.ui.components.ClassArtwork
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +32,8 @@ fun TeacherClassDetailScreen(
 ) {
     val context = LocalContext.current
     val downloader = remember { ReportDownloader(context) }
+    val classes by viewModel.classes.collectAsState()
+    val selectedClass = classes.firstOrNull { it.id == classId }
 
     LaunchedEffect(classId) {
         viewModel.fetchRoster(classId)
@@ -41,7 +45,7 @@ fun TeacherClassDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Class Details") },
+                title = { Text(selectedClass?.name ?: "Class") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -70,7 +74,7 @@ IconButton(onClick = {
             OutlinedButton(onClick = {
                 navController.navigate(com.attendance.app.core.ui.navigation.Screen.TeacherClassHistory(classId))
             }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text("View class attendance history")
+                Text("Attendance history")
             }
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Pending") })
@@ -93,8 +97,9 @@ IconButton(onClick = {
                 val currentList = viewModel.roster.filter { it.status == currentStatus }
 
                 if (currentList.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No students in this list.", style = MaterialTheme.typography.bodyMedium)
+                    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+                        ClassArtwork()
+                        Text(when (currentStatus) { "PENDING" -> "No join requests"; "REJECTED" -> "No rejected requests"; else -> "No students yet" }, style = MaterialTheme.typography.titleMedium)
                     }
                 } else {
                     LazyColumn(
@@ -102,7 +107,7 @@ IconButton(onClick = {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(currentList) { request ->
-                            Card(modifier = Modifier.fillMaxWidth()) {
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) {
                                 Row(
                                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,

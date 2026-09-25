@@ -102,7 +102,7 @@ val networkModule = module {
             }
             defaultRequest {
                 val token = tokenManager.getToken()
-                if (token != null) {
+                if (token != null && !headers.contains(HttpHeaders.Authorization)) {
                     header(HttpHeaders.Authorization, "Bearer $token")
                 }
             }
