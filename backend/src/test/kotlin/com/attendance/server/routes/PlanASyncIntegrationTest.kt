@@ -37,11 +37,12 @@ class PlanASyncIntegrationTest {
     @Before fun database() {
         Database.connect("jdbc:h2:mem:${UUID.randomUUID()};MODE=PostgreSQL;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
         transaction {
-            SchemaUtils.create(Users, Departments, AcademicYears, Classes, ClassMembers, PlanAEvents, PlanATimeAnchors)
+            SchemaUtils.create(Users, Departments, AcademicYears, Classes, ClassMembers, ApprovalRequests, PlanAEvents, PlanATimeAnchors)
             listOf(teacher to "TEACHER", student to "STUDENT").forEach { (userId, userRole) ->
                 Users.insert {
                     it[id] = userId; it[collegeId] = userRole; it[name] = userRole
                     it[passwordHash] = "unused-test-hash"; it[role] = userRole
+                    if (userRole == "STUDENT") it[faceEmbedding] = "[1.0]"
                     it[registrationStatus] = "ACTIVE"; it[createdAt] = Instant.now(); it[updatedAt] = Instant.now()
                 }
             }
@@ -61,6 +62,46 @@ class PlanASyncIntegrationTest {
                 it[status] = "ACTIVE"; it[joinedAt] = Instant.now()
             }
         }
+    }
+
+    private fun faceVector(value: Float) = Json.encodeToString(List(128) { value })
+
+    @Test fun initialEnrollmentRetriesAreIdempotentAndReplacementNeedsTeacherApproval() {
+        val requests = com.attendance.server.services.RequestService()
+        transaction { Users.update({ Users.id eq student }) { it[faceEmbedding] = null } }
+        val first = faceVector(1f)
+        val replacement = faceVector(2f)
+        assertEquals("auto-approved", requests.createFaceRequest(student, first))
+        assertEquals("auto-approved", requests.createFaceRequest(student, first))
+        assertEquals("pending", requests.createFaceRequest(student, replacement))
+        assertEquals("pending", requests.createFaceRequest(student, replacement))
+        assertEquals(1, requests.getPendingRequests(teacher).size)
+        try { requests.createFaceRequest(student, faceVector(3f)); fail("Must keep one pending replacement") }
+        catch (_: IllegalArgumentException) { }
+        transaction { assertEquals(first, Users.select { Users.id eq student }.single()[Users.faceEmbedding]) }
+        val requestId = UUID.fromString(requests.getPendingRequests(teacher).single().id)
+        try { requests.approveRequest(requestId, student); fail("Students cannot approve replacements") }
+        catch (_: SecurityException) { }
+        requests.approveRequest(requestId, teacher)
+        transaction { assertEquals(replacement, Users.select { Users.id eq student }.single()[Users.faceEmbedding]) }
+        try { requests.rejectRequest(requestId, teacher); fail("Resolved request must stay resolved") }
+        catch (_: IllegalArgumentException) { }
+    }
+
+    @Test fun missingEnrollmentAndPendingReplacementCannotSubmitFaceAttendance() {
+        val event = PlanAEvent(UUID.randomUUID().toString(), PlanAEventKind.ENTRY_FACE,
+            classId.toString(), student.toString(), PlanATimeEvidence(System.currentTimeMillis(), 1000, "boot"),
+            attemptId = "0123456789abcdef01234567")
+        transaction { Users.update({ Users.id eq student }) { it[faceEmbedding] = null } }
+        assertFalse(service.sync(student.toString(), PlanASyncRequest(listOf(event))).acknowledgements.single().accepted)
+        val requests = com.attendance.server.services.RequestService()
+        requests.createFaceRequest(student, faceVector(1f))
+        assertTrue(service.sync(student.toString(), PlanASyncRequest(listOf(event))).acknowledgements.single().accepted)
+        requests.createFaceRequest(student, faceVector(2f))
+        val newEvent = event.copy(id = UUID.randomUUID().toString())
+        assertFalse(service.sync(student.toString(), PlanASyncRequest(listOf(newEvent))).acknowledgements.single().accepted)
+        requests.rejectRequest(UUID.fromString(requests.getPendingRequests(teacher).single().id), teacher)
+        assertTrue(service.sync(student.toString(), PlanASyncRequest(listOf(newEvent))).acknowledgements.single().accepted)
     }
 
     private fun start() = PlanAEvent(UUID.randomUUID().toString(), PlanAEventKind.SESSION_START,

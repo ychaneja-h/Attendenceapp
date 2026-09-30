@@ -1,10 +1,32 @@
-# Android release 1.4.1
+# Android release 1.4.2
 
-This version uses application ID `com.attendance.app`, version name `1.4.1`, and
-version code `9`. It retains the existing release key so devices with a release
+This version uses application ID `com.attendance.app`, version name `1.4.2`, and
+version code `10`. It retains the existing release key so devices with a release
 signed by that key can upgrade without losing their local data. An installation
 signed with the Android debug key cannot be updated in place using the release
 APK; export any necessary data before removing a debug installation.
+
+## Release 1.4.2 validation (2026-09-30)
+
+Passed 77 tests (60 backend, 17 Android), backend distribution packaging,
+release lint (zero errors, 12 existing warnings), and the optimized signed APK
+build. APK signature verification confirms the existing certificate below,
+application ID `com.attendance.app`, version name `1.4.2`, and version code `10`.
+
+APK SHA-256:
+`0b6337751d24f6b105e52b85d41816f44df74e668798f17ee7a3a989ff5d9cb1`
+
+New students cannot dismiss unfinished face enrollment or bypass it by restarting,
+even after a failed upload. Existing face recovery checks the server first.
+Replacement faces require teacher approval; teacher Home shows pending requests
+and the request screen reports connection/decision errors. The backend blocks
+student face evidence when enrollment is missing or a replacement is pending.
+See [the detailed behavior and limitations](FACE_ENROLLMENT_FIX.md).
+
+No Android device was connected for this release validation. Phone tests of
+signup, camera permission denial, restart, teacher approval/rejection, offline
+sync, and upgrade compatibility remain outstanding. Alerts are in-app; background
+push notifications are not included.
 
 ## Signing configuration
 
@@ -38,7 +60,7 @@ the same certificate for future APK upgrades. If the private key was previously
 published, removing it from the current checkout does not revoke historical
 copies; review key exposure and supported distribution key rotation separately.
 
-## Build and verify
+## Build and verify (previous 1.4.1 evidence)
 
 The 1.4.1 release build passed 75 tests (58 backend, 17 Android), backend
 distribution packaging, and release lint (zero errors, 12 warnings). The APK

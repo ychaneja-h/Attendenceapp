@@ -28,6 +28,16 @@ class RequestService {
             AccessControl.requireRole(studentId, setOf("STUDENT"))
             validateFace(requestedData)
             val user = Users.select { Users.id eq studentId }.forUpdate().singleOrNull()
+            val pending = ApprovalRequests.select {
+                (ApprovalRequests.studentId eq studentId) and
+                    (ApprovalRequests.requestType eq "FACE_REGISTRATION") and (ApprovalRequests.status eq "PENDING")
+            }.firstOrNull()
+            if (pending != null) {
+                require(pending[ApprovalRequests.requestedData] == requestedData) { "A face replacement is already awaiting teacher approval" }
+                return@transaction "pending"
+            }
+            // Retrying an accepted initial upload must not create a replacement request.
+            if (user?.get(Users.faceEmbedding) == requestedData) return@transaction "auto-approved"
             if (user != null && user[Users.faceEmbedding].isNullOrEmpty()) {
                 Users.update({ Users.id eq studentId }) {
                     it[faceEmbedding] = requestedData
@@ -125,7 +135,7 @@ class RequestService {
 
     fun rejectRequest(requestId: UUID, actorId: UUID) {
         transaction {
-            val req = ApprovalRequests.select { ApprovalRequests.id eq requestId }.singleOrNull() ?: throw IllegalArgumentException("Request not found")
+            val req = ApprovalRequests.select { ApprovalRequests.id eq requestId }.forUpdate().singleOrNull() ?: throw IllegalArgumentException("Request not found")
             AccessControl.requireStudentTeacher(actorId, req[ApprovalRequests.studentId])
             require(req[ApprovalRequests.status] == "PENDING") { "Request is no longer pending" }
             ApprovalRequests.update({ ApprovalRequests.id eq requestId }) {

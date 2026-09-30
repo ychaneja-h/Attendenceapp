@@ -114,6 +114,13 @@ class PlanAAttendanceService {
             if (event.kind == PlanAEventKind.OVERRIDE) require(event.status in setOf("PRESENT", "ABSENT") && event.revision >= 0) { "Override must be Present or Absent with a persisted revision" }
         } else {
             require(event.kind in studentKinds && user[Users.role] == "STUDENT" && actorId in members) { "Only an enrolled student may submit student evidence" }
+            if (event.kind == PlanAEventKind.ENTRY_FACE || event.kind == PlanAEventKind.EXIT_FACE) {
+                require(!user[Users.faceEmbedding].isNullOrBlank()) { "Complete face enrollment before marking attendance" }
+                require(!ApprovalRequests.select {
+                    (ApprovalRequests.studentId eq actor) and (ApprovalRequests.requestType eq "FACE_REGISTRATION") and
+                        (ApprovalRequests.status eq "PENDING")
+                }.any()) { "Face replacement awaits teacher approval" }
+            }
             require(event.studentId == null || event.studentId == actorId) { "Student evidence cannot identify another student" }
             require(event.attemptId != null && event.sessionId == null) { "Student evidence uses an attempt ID; the teacher determines its session" }
             if (event.kind == PlanAEventKind.BROADCAST_SENT) require(event.sequence != null && event.sequence in 0..65535) { "Broadcast requires a valid sequence" }

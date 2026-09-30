@@ -1,6 +1,9 @@
 package com.attendance.app.teacher.ui
 
 import android.Manifest
+import io.ktor.client.request.get
+import io.ktor.client.call.body
+import io.ktor.http.isSuccess
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
@@ -52,6 +55,19 @@ fun TeacherHomeScreen(
     val activeClassId by attendanceViewModel.activeClassIdFlow.collectAsState()
     val attendanceState by attendanceViewModel.state.collectAsState()
     val context = LocalContext.current
+    val requestsClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
+    var pendingRequests by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            pendingRequests = try {
+                val response = requestsClient.get("${com.attendance.app.core.network.Constants.BASE_URL}/requests/teacher")
+                check(response.status.isSuccess())
+                response.body<List<TeacherRequestDto>>().size
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { null }
+            kotlinx.coroutines.delay(30_000)
+        }
+    }
 
     var selectedClassId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedClassName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -151,6 +167,10 @@ fun TeacherHomeScreen(
         bottomBar = { TeacherBottomBar(navController, 0) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            OutlinedButton(onClick = { navController.navigate(Screen.TeacherRequests) }, modifier = Modifier.fillMaxWidth()) {
+                Text(pendingRequests?.let { if (it > 0) "$it approval requests need your review" else "View face and device approval requests" }
+                    ?: "Approval requests unavailable — tap to retry")
+            }
             if (uiState is ProfileUiState.Success) {
                 val profile = (uiState as ProfileUiState.Success).profile
                 Card(

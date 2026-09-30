@@ -49,6 +49,8 @@ fun FaceRegistrationScreen(
     viewModel: FaceRegistrationViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val httpClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
+    androidx.activity.compose.BackHandler(enabled = !showBackButton) { }
     val state by viewModel.registrationState.collectAsState()
     var hasCameraPermission by remember { mutableStateOf(false) }
 
@@ -69,6 +71,17 @@ fun FaceRegistrationScreen(
     }
 
     LaunchedEffect(Unit) {
+        if (!showBackButton) {
+            try {
+                com.attendance.app.face.syncApprovedFace(context, httpClient)
+                val prefs = context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE)
+                if (!prefs.getString("registered_face_embedding", null).isNullOrBlank()) {
+                    onRegistrationComplete()
+                    return@LaunchedEffect
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { /* Submission reports connection failures. */ }
+        }
         cameraLauncher.launch(Manifest.permission.CAMERA)
     }
 
@@ -188,7 +201,7 @@ fun FaceRegistrationScreen(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        "Face request saved. Approval may be required.",
+                                        if ((state as FaceRegState.Success).pendingApproval) "Request sent to your teacher. Attendance is blocked until approval." else "Face registered successfully.",
                                         color = Color.White,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
@@ -217,7 +230,7 @@ fun FaceRegistrationScreen(
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Button(
-                                        onClick = { viewModel.reset() },
+                                        onClick = { viewModel.retry(context) },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.error
                                         )

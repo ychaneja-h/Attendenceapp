@@ -3,6 +3,7 @@
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -23,17 +24,34 @@ import com.attendance.app.auth.data.TokenManager
 
 @Composable
 fun AppNavHost() {
+    val context = LocalContext.current
+    val facePrefs = androidx.compose.runtime.remember(context) { context.getSharedPreferences("attendance_prefs", android.content.Context.MODE_PRIVATE) }
+    var faceRevision by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(facePrefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> faceRevision++ }
+        facePrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { facePrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    val needsEnrollment = faceRevision.let {
+        facePrefs.getString("registered_face_embedding", null).isNullOrBlank()
+    }
     val navController = rememberNavController()
     val tokenManager = koinInject<TokenManager>()
     val attendanceRepository = koinInject<com.attendance.app.core.data.attendance.AttendanceRepository>()
     val attendance by attendanceRepository.state.collectAsState()
     val currentEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(currentEntry, needsEnrollment) {
+        if (tokenManager.getRole()?.uppercase() == "STUDENT" && needsEnrollment &&
+            currentEntry?.destination?.hasRoute<Screen.FaceEnrollment>() == false) {
+            navController.navigate(Screen.FaceEnrollment) { launchSingleTop = true }
+        }
+    }
 
     // Reopening into Home or using another app route cannot bypass unfinished face checkout.
     LaunchedEffect(attendance.activeStudentAttempt?.attemptId, currentEntry) {
         val active = attendance.activeStudentAttempt ?: return@LaunchedEffect
         val destination = currentEntry?.destination ?: return@LaunchedEffect
-        if (tokenManager.getRole()?.uppercase() == "STUDENT" &&
+        if (!needsEnrollment && tokenManager.getRole()?.uppercase() == "STUDENT" &&
             !destination.hasRoute<Screen.StudentClassDetail>() && !destination.hasRoute<Screen.FaceVerification>()) {
             navController.navigate(Screen.StudentClassDetail(active.classId)) { launchSingleTop = true }
         }
@@ -44,7 +62,7 @@ fun AppNavHost() {
     
     val startDestination: Any = if (token != null && role != null) {
         when (role.uppercase()) {
-            "STUDENT" -> Screen.StudentHome
+            "STUDENT" -> if (needsEnrollment) Screen.FaceEnrollment else Screen.StudentHome
             "TEACHER" -> Screen.TeacherHome
             "HOD" -> Screen.HodDashboard
             "ADMIN" -> Screen.AdminHome
@@ -240,7 +258,7 @@ fun AppNavHost() {
                         popUpTo(Screen.FaceEnrollment) { inclusive = true }
                     }
                 },
-                showBackButton = navController.previousBackStackEntry != null
+                showBackButton = !needsEnrollment && navController.previousBackStackEntry != null
             )
         }
         

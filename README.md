@@ -1,12 +1,14 @@
 # 📱 Smart Attendance System
 
-## Release 1.4.1 (Android version code 9)
+## Release 1.4.2 (Android version code 10)
 
 Teachers now scan student BLE broadcasts. Attendance records remain available offline and reconcile with the backend after synchronization. Entry and exit face scans use five-minute windows, and automatic attendance requires at least 75% of expected checks. Teachers can review and override results and export monthly reports.
 
 This update simplifies Home, Classes and History, adds a blue-and-green attendance icon, provides clear registration validation, and fixes duplicate authentication headers that caused History synchronization to return HTTP 500. Detailed checks remain available under View details; attendance rules are unchanged.
 
-Use the matching 1.4.1 backend with this release. See [release and signing instructions](RELEASE.md), [attendance behavior and device-test limits](PLAN_A_IMPLEMENTATION.md), and [security changes](SECURITY_RELEASE.md).
+New students must complete face enrollment, including after restarting the app. Replacement faces remain inactive until teacher approval. Teacher Home displays pending approval requests; face attendance is also gated by the backend. See [face enrollment changes](FACE_ENROLLMENT_FIX.md).
+
+Use the matching 1.4.2 backend with this release. See [release and signing instructions](RELEASE.md), [attendance behavior and device-test limits](PLAN_A_IMPLEMENTATION.md), and [security changes](SECURITY_RELEASE.md).
 
 An enterprise-grade, secure, and offline-capable Smart Attendance application built with modern Android development practices. This system utilizes **Machine Learning for Face Recognition**, **Liveness Detection**, and **Local Network/BLE** capabilities to accurately and securely record student attendance.
 

@@ -87,6 +87,9 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
     private fun saveTemplate(context: Context) {
         viewModelScope.launch {
             try {
+                val authPrefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                val owner = authPrefs.getString("user_id", null)
+                check(owner != null) { "Sign in before registering a face." }
                 // Average all collected embeddings into one robust template
                 val template = FaceMath.averageEmbeddings(collectedEmbeddings)
                 val embeddingJson = org.json.JSONArray(template.toList()).toString()
@@ -106,7 +109,10 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
                         setBody(mapOf("faceEmbeddingJSON" to embeddingJson))
                 }
                 check(response.status.isSuccess()) { "The face request was not accepted. Please try again when connected." }
-                if (response.bodyAsText().contains("auto-approved", ignoreCase = true)) {
+                val status = org.json.JSONObject(response.bodyAsText()).optString("status")
+                check(authPrefs.getString("user_id", null) == owner) { "Account changed. Sign in and check face status." }
+                check(status == "auto-approved" || status == "pending") { "Unexpected face approval response. Retry when connected." }
+                if (status == "auto-approved") {
                     check(prefs.edit()
                         .putString("registered_face_embedding", embeddingJson)
                         .remove("pending_face_embedding")
@@ -114,7 +120,9 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
                         .commit()) { "Unable to save the approved face on this phone." }
                 }
 
-                _registrationState.value = FaceRegState.Success
+                _registrationState.value = FaceRegState.Success(status == "pending")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save face template: ${e.message}", e)
                 _registrationState.value = FaceRegState.Error("Registration failed: ${e.message}")
@@ -123,8 +131,17 @@ class FaceRegistrationViewModel(private val httpClient: HttpClient) : ViewModel(
     }
 
     fun reset() {
+        if (_registrationState.value is FaceRegState.Uploading) return
         collectedEmbeddings.clear()
         _registrationState.value = FaceRegState.Idle
+    }
+
+    fun retry(context: Context) {
+        if (_registrationState.value !is FaceRegState.Error) return
+        if (collectedEmbeddings.size == REQUIRED_SAMPLES) {
+            _registrationState.value = FaceRegState.Uploading
+            saveTemplate(context)
+        } else reset()
     }
 }
 
@@ -139,7 +156,7 @@ sealed class FaceRegState {
     object Uploading : FaceRegState()
 
     /** Registration completed successfully */
-    object Success : FaceRegState()
+    data class Success(val pendingApproval: Boolean) : FaceRegState()
 
     /** Error with retry capability */
     data class Error(val message: String) : FaceRegState()
